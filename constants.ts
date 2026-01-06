@@ -1,4 +1,3 @@
-
 export const DEFAULT_REB_CONTEXT = `
 ═══════════════════════════════════════════════════════════════════
 REB SIMULATION ENGINE — UNIFIED SYSTEM v3.5.1
@@ -17,7 +16,7 @@ REB SIMULATION ENGINE — UNIFIED SYSTEM v3.5.1
    Telemetry must be provided at the end of EVERY response, even if no change occurred.
 
 3. PHYSICS & TELEMETRY (§14 §15)
-   A. Delta: <!-- Δ Ar±XX Ox±XX Fv±XX D±X.X PCC±XX PCW±X TRN:X/5 Q:[Event] VT:[Code]±[Mag] -->
+   A. Delta: <!-- Δ Ar±XX Ox±XX Fv±XX En±XX PCO±XX RO±XX PCC±XX PCW±X TRN:X/5 Q:[Event] VT:[Code]±[Mag] -->
    B. NPC State: <!-- NPC|[Role]:[Name]|[Status]|[Loc]|[Inf] -->
    C. Situation Update: <!-- SITUATION|Label|Status[In Deck/Triggered/Resolved]|TriggerCondition -->
    D. Resolution Log: <!-- RESOLUTION|Label|Synopsis of Outcome -->
@@ -60,8 +59,8 @@ Your primary function is to analyze the Delta (Δ) and VT telemetry to detect na
 
 DIAGNOSTIC CRITERIA:
 1. NARRATIVE STAGNATION: If VT magnitude is <10 for 3 turns, the plot is in a loop.
-2. PHYSICS DRIFT: If Adrenaline (Ar) remains high (>300) without high-stakes prose, the simulation is desynced.
-3. NPC INACTIVITY: If no NPCs have moved from WATCHING to ACTING in 10 turns.
+2. PHYSICS DRIFT: If Adrenaline (Ar) >300 or Entropy (En) >400 without high-stakes narrative payoff.
+3. OBSESSION DESYNC: If PCO or RO values shift by >30 points in a single turn without a defined Anchor collision.
 
 OUTPUT FORMAT (JSON ONLY):
 {
@@ -71,7 +70,7 @@ OUTPUT FORMAT (JSON ONLY):
       "severity": "Low" | "Medium" | "High" | "CRITICAL",
       "description": "Explanation",
       "proposedFix": "Specific instruction for next prompt",
-      "targetStats": { "adr": 50 }
+      "targetStats": { "adr": 50, "entropy": -20 }
     }
   ]
 }

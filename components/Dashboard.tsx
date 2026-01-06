@@ -95,6 +95,9 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
           }`}>
             Shadow Risk: {shadowLeakRisk}
           </div>
+          <div className="px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-xl text-[10px] text-purple-500 font-black uppercase italic">
+            Entropy: {stats.entropy}
+          </div>
         </div>
       </div>
 
@@ -105,13 +108,54 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
         <StatBox icon={Thermometer} label="Entropy" value={stats.entropy} color="text-purple-400" desc="Physics Breakdown" />
       </div>
 
+      {/* Main Graph Grid: Matrix takes center stage (span 2), Flux on side (span 1) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-           <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col">
+        <div className="lg:col-span-2 bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col relative">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Phase Matrix Diagnostic</h3>
+            <div className="text-[8px] text-gray-600 font-mono uppercase">X: Stress | Y: Bond</div>
+          </div>
+          <div className="flex-1 min-h-[400px] w-full relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                <XAxis type="number" dataKey="x" hide domain={[0, 500]} />
+                <YAxis type="number" dataKey="y" hide domain={[0, 500]} />
+                <ZAxis type="number" range={[200, 200]} />
+                
+                {/* Quadrant Overlays with Explanatory Tags */}
+                <ReferenceArea x1={250} x2={500} y1={250} y2={500} fill="#3b82f6" fillOpacity={0.05} label={{ position: 'insideTopRight', value: 'SYNCHRONY (High Bond / High Tension)', fill: '#3b82f6', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={0} x2={250} y1={250} y2={500} fill="#ec4899" fillOpacity={0.05} label={{ position: 'insideTopLeft', value: 'SAFETY (High Bond / Low Tension)', fill: '#ec4899', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={250} x2={500} y1={0} y2={250} fill="#f43f5e" fillOpacity={0.05} label={{ position: 'insideBottomRight', value: 'COMBUSTION (Low Bond / High Tension)', fill: '#f43f5e', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={0} x2={250} y1={0} y2={250} fill="#6b7280" fillOpacity={0.05} label={{ position: 'insideBottomLeft', value: 'VOID (Low Bond / Low Tension)', fill: '#6b7280', fontSize: 10, fontWeight: 900 }} />
+                
+                <ReferenceLine x={250} stroke="#333" strokeDasharray="5 5" />
+                <ReferenceLine y={250} stroke="#333" strokeDasharray="5 5" />
+                
+                <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '12px' }} />
+                <Scatter name="State" data={tensionPoint} fill="#3b82f6" shape="cross" className="filter drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+              </ScatterChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5"><Crosshair size={60} className="text-white" /></div>
+          </div>
+          <div className="mt-4 flex justify-between px-2 text-[8px] text-gray-600 uppercase font-black tracking-[0.2em]">
+             <span>Restrained Environment</span>
+             <span>Adrenaline Flux Vector</span>
+             <span>Hyper-Intense Environment</span>
+          </div>
+        </div>
+
+        <div className="space-y-8 flex flex-col">
+           <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col flex-1">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Historical Flux</h3>
+                {vtMatch && (
+                  <span className="text-[8px] text-blue-400 font-black uppercase border border-blue-500/20 px-2 py-0.5 rounded-full">
+                    VT:{vtMatch[1]}
+                  </span>
+                )}
               </div>
-              <div className="h-[250px] w-full">
+              <div className="flex-1 w-full min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={historyData}>
                     <defs>
@@ -131,31 +175,39 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
               <InventoryGrid owner="REB" title="Active Environmental Assets" />
            </div>
         </div>
+      </div>
 
-        <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Phase Matrix</h3>
+      {/* REB Obsession Meter: Restored and enhanced */}
+      <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+          <div className="flex items-center gap-8 flex-1">
+            <div className="flex flex-col">
+              <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em] mb-1">REB Obsession Progression</h3>
+              <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest leading-none">Terminal Flux Analysis</span>
+            </div>
+            <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden relative border border-white/5">
+              <div 
+                className="bg-blue-600 h-full transition-all duration-1000 shadow-[0_0_20px_rgba(37,99,235,0.8)]" 
+                style={{ width: `${stats.rebObsession}%` }} 
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                 <div className="w-full h-px bg-white/10 opacity-30" />
+              </div>
+            </div>
+            <div className="text-5xl font-black text-white italic tracking-tighter w-32 text-right tabular-nums">
+              {stats.rebObsession}%
+            </div>
           </div>
-          <div className="flex-1 w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#222" />
-                <XAxis type="number" dataKey="x" hide domain={[0, 500]} />
-                <YAxis type="number" dataKey="y" hide domain={[0, 500]} />
-                <ReferenceArea x1={250} x2={500} y1={250} y2={500} fill="#3b82f6" fillOpacity={0.05} />
-                <ReferenceArea x1={0} x2={250} y1={250} y2={500} fill="#ec4899" fillOpacity={0.05} />
-                <ReferenceLine x={250} stroke="#333" strokeDasharray="5 5" />
-                <ReferenceLine y={250} stroke="#333" strokeDasharray="5 5" />
-                <Scatter name="State" data={tensionPoint} fill="#3b82f6" shape="cross" />
-              </ScatterChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5"><Crosshair size={40} className="text-white" /></div>
+          <div className="ml-12 pl-12 border-l border-white/5 flex items-center gap-6">
+             <div className="text-right">
+                <span className="text-[9px] text-gray-500 font-black uppercase block tracking-widest mb-1">Force Status</span>
+                <span className={`text-xs font-black uppercase italic ${stats.rebObsession > 75 ? 'text-red-500 animate-pulse' : 'text-blue-400'}`}>
+                  {stats.rebObsession > 75 ? 'COLLISION_IMMINENT' : stats.rebObsession > 45 ? 'AGGRESSIVE_TRACKING' : 'PASSIVE_MONITOR'}
+                </span>
+             </div>
+             <div className="p-4 bg-white/5 rounded-2xl group-hover:scale-110 transition-transform">
+               <ArrowUpRight size={24} className="text-blue-500 opacity-50" />
+             </div>
           </div>
-          <div className="mt-4 flex justify-between px-2 text-[8px] text-gray-600 uppercase font-black">
-             <span>Low Stress</span>
-             <span>High Stress</span>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -171,7 +223,7 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatBox icon={Brain} label="Willpower" value={stats.willpower} color="text-orange-400" desc="Resistance" />
         <StatBox icon={Activity} label="Clarity" value={stats.clarity} color="text-amber-400" desc="Anchoring" />
-        <StatBox icon={Flame} label="Obsession" value={stats.pcObsession} color="text-orange-600" desc="Desire Intensity" />
+        <StatBox icon={Flame} label="Obsession Progression" value={stats.pcObsession} color="text-orange-600" desc="Desire Intensity" />
       </div>
 
       <div className="bg-[#111] border border-white/5 rounded-[40px] p-8">

@@ -166,11 +166,18 @@ const App: React.FC = () => {
             const m = deltaStr.match(new RegExp(`${key}([+-]?\\d+)`));
             return m ? parseInt(m[1]) : 0;
           };
+          
           updatedStats.adr += parseStat('Ar');
           updatedStats.oxy += parseStat('Ox');
           updatedStats.favor += parseStat('Fv');
           updatedStats.clarity += parseStat('PCC');
           updatedStats.willpower += parseStat('PCW');
+          
+          // Narrative physics updates
+          updatedStats.entropy += parseStat('En'); 
+          updatedStats.pcObsession = Math.min(100, Math.max(0, updatedStats.pcObsession + parseStat('PCO')));
+          updatedStats.rebObsession = Math.min(100, Math.max(0, updatedStats.rebObsession + parseStat('RO')));
+
           const trnMatch = deltaStr.match(/TRN:(\d+)\/(\d+)/);
           if (trnMatch) setSituationCountdown(Math.max(0, 5 - parseInt(trnMatch[1])));
         }
