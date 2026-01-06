@@ -18,6 +18,18 @@ export interface CharacterArc {
   momentum: 'Ascending' | 'Descending' | 'Stagnant';
 }
 
+/**
+ * Interface representing a generated character portrait
+ */
+export interface Portrait {
+  id: string;
+  characterName: string;
+  base64Data: string;
+  generatedAt: number;
+  quadrantAtGeneration: string;
+  prompt: string;
+}
+
 export interface Item {
   id: string;
   name: string;
@@ -66,6 +78,9 @@ export interface NPC {
   status: string;
   role: string;
   proximity: 'High' | 'Medium' | 'Low';
+  portrait?: Portrait; // Portait is now defined in this file
+  temperament?: string; // NEW - for portrait generation
+  physicalDescription?: string; // NEW - wizard input
 }
 
 export interface Situation {
@@ -108,73 +123,6 @@ export interface SimulationState {
   isInitialized: boolean;
   contextLoaded: boolean;
   activeAct: number;
-  stats: {
-    adr: number;
-    oxy: number;
-    favor: number;
-    entropy: number;
-    willpower: number;
-    clarity: number;
-    pcObsession: number;
-    rebObsession: number;
-    week: number;
-    tokens: number;
-    act: number;
-    turns: number;
-  };
-  anchors: AnchorPoint[];
-  npcs: NPC[];
-  situations: Situation[];
-  inventory: Item[];
-  sceneHistory: SceneSnapshot[];
-}
-  export interface Portrait {
-  id: string;
-  characterName: string;
-  base64Data: string;
-  generatedAt: number;
-  quadrantAtGeneration: string;
-  prompt: string;
-}
-
-// Update NPC interface to include portrait
-export interface NPC {
-  name: string;
-  status: string;
-  role: string;
-  proximity: 'High' | 'Medium' | 'Low';
-  portrait?: Portrait; // NEW
-  temperament?: string; // NEW - for portrait generation
-  physicalDescription?: string; // NEW - wizard input
-}
-
-// Add PC and REB character types for dashboard
-export interface PlayerCharacter {
-  name: string;
-  origin: string;
-  wound: string;
-  drive: string;
-  skills: string[];
-  portrait?: Portrait;
-  physicalDescription?: string;
-}
-
-export interface RebCharacter {
-  name: string;
-  origin: string;
-  temperament: string;
-  wound: string;
-  drive: string;
-  portrait?: Portrait;
-  physicalDescription?: string;
-  literaryPreset?: string; // If using canonical character
-}
-
-// Update SimulationState to include character data
-export interface SimulationState {
-  isInitialized: boolean;
-  contextLoaded: boolean;
-  activeAct: number;
   pc?: PlayerCharacter; // NEW
   reb?: RebCharacter; // NEW
   stats: {
@@ -196,6 +144,27 @@ export interface SimulationState {
   situations: Situation[];
   inventory: Item[];
   sceneHistory: SceneSnapshot[];
+}
+// Add PC and REB character types for dashboard
+export interface PlayerCharacter {
+  name: string;
+  origin: string;
+  wound: string;
+  drive: string;
+  skills: string[];
+  portrait?: Portrait;
+  physicalDescription?: string;
+}
+
+export interface RebCharacter {
+  name: string;
+  origin: string;
+  temperament: string;
+  wound: string;
+  drive: string;
+  portrait?: Portrait;
+  physicalDescription?: string;
+  literaryPreset?: string; // If using canonical character
 }
 
 // Portrait generation request (mirrors service interface)

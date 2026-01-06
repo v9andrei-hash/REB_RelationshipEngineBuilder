@@ -100,6 +100,8 @@ const handleGeneratePortrait = async (
         setSystemContext(parsed.systemContext || '');
         setAnchors(parsed.anchors || []);
         setNpcs(parsed.npcs || []);
+        setPc(parsed.pc || null);
+        setReb(parsed.reb || null);
         setSituations(parsed.situations || []);
         setInventory(parsed.inventory || []);
         setSceneHistory(parsed.sceneHistory || []);
@@ -125,7 +127,9 @@ const handleGeneratePortrait = async (
       inventory,
       sceneHistory,
       stats,
-      situationCountdown
+      situationCountdown,
+      pc,
+      reb,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
   }, [messages, systemContext, anchors, npcs, situations, inventory, sceneHistory, stats, situationCountdown]);

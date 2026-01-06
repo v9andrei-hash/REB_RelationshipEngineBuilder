@@ -4,7 +4,6 @@ import { Message, SimulationIntervention, Chronicle } from "../types";
 import { MODEL_NAME, ARTIFACT_OVERSEER_INSTRUCTION, CHRONICLE_SYNTHESIS_INSTRUCTION, META_ARCHITECT_INSTRUCTION } from "../constants";
 
 export class GeminiService {
-  private ai: GoogleGenAI;
   private chat: Chat | null = null;
   private systemInstruction: string = '';
   private audioContext: AudioContext | null = null;
@@ -15,7 +14,7 @@ export class GeminiService {
   ];
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Fresh instances should be created at call time
   }
 
   setSystemInstruction(instruction: string) {
@@ -25,7 +24,9 @@ export class GeminiService {
 
   private initChat() {
     if (!this.chat) {
-      this.chat = this.ai.chats.create({
+      // Create fresh instance for chat session
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      this.chat = ai.chats.create({
         model: MODEL_NAME,
         config: {
           systemInstruction: this.systemInstruction,
@@ -38,7 +39,8 @@ export class GeminiService {
   }
 
   async summarizeHistory(messages: Message[]): Promise<string> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Create fresh instance per guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `
       Perform §5 Context Management. Summarize the following 15 turns into a single 'Narrative Prime' block 
       that preserves Act, Week, current Bond Matrix positions, and critical character shifts.
@@ -72,7 +74,8 @@ export class GeminiService {
   }
 
   async synthesizeChronicle(messages: Message[], stats: any, anchors: any[], npcs: any[]): Promise<any> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Create fresh instance per guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `
       CURRENT TELEMETRY:
       Stats: ${JSON.stringify(stats)}
@@ -101,7 +104,8 @@ export class GeminiService {
   }
 
   async analyzeSimulation(history: Message[], stats: any, situations: any[]): Promise<SimulationIntervention[]> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Create fresh instance per guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `
       CURRENT STATS: ${JSON.stringify(stats)}
       SITUATION DECK: ${JSON.stringify(situations)}
@@ -131,7 +135,8 @@ export class GeminiService {
   }
 
   async *sendMetaMessageStream(message: string, history: Message[]) {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Create fresh instance per guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     // Filter history for recent context without overwhelming the Architect
     const historyRef = history.slice(-10).map(m => `[${m.role === 'user' ? 'ADMIN' : 'ENGINE'}] ${m.content}`).join('\n');
     
@@ -189,7 +194,8 @@ export class GeminiService {
 
   async generateSpeech(text: string, voice: string = 'Zephyr') {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      // Create fresh instance per guidelines
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: `Read this in a calm, slightly synthetic, authoritative engine voice: ${text}` }] }],

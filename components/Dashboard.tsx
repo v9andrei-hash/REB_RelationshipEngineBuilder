@@ -2,7 +2,8 @@
 import React from 'react';
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
 import { Zap, TrendingUp, Shield, Thermometer, Activity, Users, Layers, Timer, Milestone, Brain, Flame, ArrowUpRight, Crosshair, Package, Archive, Box, Star } from 'lucide-react';
-import { AnchorPoint, NPC, Situation, SceneSnapshot, Item } from '../types';
+import { AnchorPoint, NPC, Situation, SceneSnapshot, Item, PlayerCharacter, RebCharacter } from '../types';
+import PortraitDisplay from './PortraitDisplay';
 
 interface DashboardProps {
   view: 'reb' | 'pc' | 'anchors' | 'npcs' | 'situations';

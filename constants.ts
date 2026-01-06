@@ -1,3 +1,4 @@
+
 export const DEFAULT_REB_CONTEXT = `
 ═══════════════════════════════════════════════════════════════════
 REB SIMULATION ENGINE — UNIFIED SYSTEM v3.5.1
@@ -177,4 +178,4 @@ OUTPUT FORMAT (JSON ONLY):
 }
 `;
 
-export const MODEL_NAME = 'gemini-2.5-flash-preview-05-20';
+export const MODEL_NAME = 'gemini-3-pro-preview';

@@ -1,4 +1,6 @@
+
 import { GoogleGenAI } from "@google/genai";
+import { Portrait, PortraitRequest } from "../types";
 
 // Portrait style presets based on the simulation's aesthetic
 const STYLE_PRESETS = {
@@ -25,33 +27,11 @@ const STYLE_PRESETS = {
   }
 };
 
-export interface PortraitRequest {
-  name: string;
-  role: 'PC' | 'REB' | 'NPC';
-  physicalDescription?: string;
-  temperament?: string;
-  origin?: string;
-  wound?: string;
-  currentQuadrant?: 'Q1' | 'Q2' | 'Q3' | 'Q4';
-  status?: 'ACTING' | 'WATCHING' | 'DORMANT';
-  era?: string; // For period-appropriate styling
-}
-
-export interface Portrait {
-  id: string;
-  characterName: string;
-  base64Data: string;
-  generatedAt: number;
-  quadrantAtGeneration: string;
-  prompt: string; // Store for debugging/regeneration
-}
-
 export class PortraitService {
-  private ai: GoogleGenAI;
   private cache: Map<string, Portrait> = new Map();
   
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // Fresh instances should be created at call time
   }
 
   /**
@@ -137,30 +117,41 @@ export class PortraitService {
     const prompt = this.buildPrompt(request);
     
     try {
-      const response = await this.ai.models.generateContent({
-        model: "gemini-2.0-flash-preview-image-generation",
+      // Create new instance right before call as per guidelines
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-image",
         contents: [{ 
-          parts: [{ text: `Generate a portrait: ${prompt}` }] 
+          parts: [{ text: `Generate a character portrait for a psychological thriller: ${prompt}` }] 
         }],
         config: {
-          responseModalities: ["IMAGE", "TEXT"],
+          imageConfig: {
+            aspectRatio: "1:1"
+          }
         }
       });
       
-      // Extract image data from response
-      const imagePart = response.candidates?.[0]?.content?.parts?.find(
-        (p: any) => p.inlineData?.mimeType?.startsWith('image/')
-      );
+      // Safety iteration through parts to find the image data
+      let base64Data: string | undefined;
+      const candidate = response.candidates?.[0];
+      if (candidate?.content?.parts) {
+        for (const part of candidate.content.parts) {
+          if (part.inlineData) {
+            base64Data = part.inlineData.data;
+            break;
+          }
+        }
+      }
       
-      if (!imagePart?.inlineData?.data) {
-        console.error("No image data in response");
+      if (!base64Data) {
+        console.error("No image data in response candidate parts");
         return null;
       }
       
       const portrait: Portrait = {
         id: Math.random().toString(36).substr(2, 9),
         characterName: request.name,
-        base64Data: imagePart.inlineData.data,
+        base64Data,
         generatedAt: Date.now(),
         quadrantAtGeneration: request.currentQuadrant || 'unknown',
         prompt
@@ -183,7 +174,6 @@ export class PortraitService {
     newQuadrant: 'Q1' | 'Q2' | 'Q3' | 'Q4',
     characterData: PortraitRequest
   ): Promise<Portrait | null> {
-    // Only regenerate if quadrant actually changed
     if (existing.quadrantAtGeneration === newQuadrant) {
       return existing;
     }
@@ -200,37 +190,37 @@ export class PortraitService {
   buildLiteraryPresetPrompt(presetName: string, era: string): PortraitRequest {
     const presets: Record<string, Partial<PortraitRequest>> = {
       'Erika Kohut': {
-        physicalDescription: "Late 30s woman, pale, austere, precisely groomed, dark hair in severe style, Vienna conservatory professor",
+        physicalDescription: "Late 30s woman, pale, austere, dark hair in severe style, professional piano instructor",
         temperament: 'Ascetic',
         wound: 'Erasure',
         era: '1980s Vienna'
       },
       'Catherine Earnshaw': {
-        physicalDescription: "Young woman, wild dark hair, fierce eyes, weathered beauty, Yorkshire moors",
+        physicalDescription: "Young woman, wild dark hair, fierce energetic beauty, Yorkshire moors",
         temperament: 'Manic',
         wound: 'Suffocation',
         era: '19th century Yorkshire'
       },
       'Anna Karenina': {
-        physicalDescription: "Elegant aristocratic woman, dark curls, luminous eyes, expensive but restrained dress",
+        physicalDescription: "Elegant aristocratic woman, dark curls, luminous eyes, expensive restrained dress",
         temperament: 'Wraith',
         wound: 'Objectification',
-        era: '1870s Russian aristocracy'
+        era: '1870s Russia'
       },
       'Amy Dunne': {
-        physicalDescription: "Blonde woman, 30s, conventionally beautiful, unsettling perfection, cool blue eyes",
+        physicalDescription: "Blonde woman, 30s, conventionally beautiful, cool blue eyes, perfect composure",
         temperament: 'Cynic',
         wound: 'Erasure',
-        era: 'Contemporary suburban America'
+        era: 'Contemporary America'
       },
       'O': {
-        physicalDescription: "Young woman, dark hair, porcelain skin, downcast eyes, elegant submission",
+        physicalDescription: "Young woman, dark hair, porcelain skin, elegant submissive bearing",
         temperament: 'Ascetic',
         wound: 'Objectification',
-        era: '1950s Paris haute couture'
+        era: '1950s Paris'
       },
       'Héloïse': {
-        physicalDescription: "Medieval woman, modest veil, intelligent eyes, scholarly bearing, convent setting",
+        physicalDescription: "Medieval woman, modest veil, intelligent eyes, scholarly nun",
         temperament: 'Ascetic',
         wound: 'Suffocation',
         era: '12th century France'
@@ -250,9 +240,6 @@ export class PortraitService {
     };
   }
 
-  /**
-   * Clear cache (useful when starting new session)
-   */
   clearCache(): void {
     this.cache.clear();
   }
