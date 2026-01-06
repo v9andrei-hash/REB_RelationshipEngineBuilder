@@ -128,3 +128,85 @@ export interface SimulationState {
   inventory: Item[];
   sceneHistory: SceneSnapshot[];
 }
+  export interface Portrait {
+  id: string;
+  characterName: string;
+  base64Data: string;
+  generatedAt: number;
+  quadrantAtGeneration: string;
+  prompt: string;
+}
+
+// Update NPC interface to include portrait
+export interface NPC {
+  name: string;
+  status: string;
+  role: string;
+  proximity: 'High' | 'Medium' | 'Low';
+  portrait?: Portrait; // NEW
+  temperament?: string; // NEW - for portrait generation
+  physicalDescription?: string; // NEW - wizard input
+}
+
+// Add PC and REB character types for dashboard
+export interface PlayerCharacter {
+  name: string;
+  origin: string;
+  wound: string;
+  drive: string;
+  skills: string[];
+  portrait?: Portrait;
+  physicalDescription?: string;
+}
+
+export interface RebCharacter {
+  name: string;
+  origin: string;
+  temperament: string;
+  wound: string;
+  drive: string;
+  portrait?: Portrait;
+  physicalDescription?: string;
+  literaryPreset?: string; // If using canonical character
+}
+
+// Update SimulationState to include character data
+export interface SimulationState {
+  isInitialized: boolean;
+  contextLoaded: boolean;
+  activeAct: number;
+  pc?: PlayerCharacter; // NEW
+  reb?: RebCharacter; // NEW
+  stats: {
+    adr: number;
+    oxy: number;
+    favor: number;
+    entropy: number;
+    willpower: number;
+    clarity: number;
+    pcObsession: number;
+    rebObsession: number;
+    week: number;
+    tokens: number;
+    act: number;
+    turns: number;
+  };
+  anchors: AnchorPoint[];
+  npcs: NPC[];
+  situations: Situation[];
+  inventory: Item[];
+  sceneHistory: SceneSnapshot[];
+}
+
+// Portrait generation request (mirrors service interface)
+export interface PortraitRequest {
+  name: string;
+  role: 'PC' | 'REB' | 'NPC';
+  physicalDescription?: string;
+  temperament?: string;
+  origin?: string;
+  wound?: string;
+  currentQuadrant?: 'Q1' | 'Q2' | 'Q3' | 'Q4';
+  status?: 'ACTING' | 'WATCHING' | 'DORMANT';
+  era?: string;
+}

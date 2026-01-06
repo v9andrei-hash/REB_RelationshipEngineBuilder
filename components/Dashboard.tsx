@@ -14,10 +14,15 @@ interface DashboardProps {
   sceneHistory: SceneSnapshot[];
   lastDelta?: string;
   situationCountdown?: number;
+   pc?: PlayerCharacter | null;
+  reb?: RebCharacter | null;
+  currentQuadrant?: 'Q1' | 'Q2' | 'Q3' | 'Q4';
+  onRegeneratePortrait?: (name: string, role: 'PC' | 'REB' | 'NPC', extraData?: any) => void;
+  generatingPortraits?: string[]
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situations, inventory, sceneHistory, lastDelta, situationCountdown = 5 }) => {
-  
+const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situations, inventory, sceneHistory, lastDelta, situationCountdown = 5, pc, reb, currentQuadrant, onRegeneratePortrait, generatingPortraits = [] }) => {
+
   const tensionPoint = [
     { x: Math.min(500, Math.max(0, stats.adr)), y: Math.min(500, Math.max(0, stats.oxy)), name: 'Current State' }
   ];

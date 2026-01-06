@@ -7,6 +7,8 @@ import ChatInterface from './components/ChatInterface';
 import MetaTerminal from './components/MetaTerminal';
 import ContextEditor from './components/ContextEditor';
 import Dashboard from './components/Dashboard';
+import { portraitService } from './services/imageService';
+import { Portrait, PlayerCharacter, RebCharacter } from './types';
 
 const STORAGE_KEY = 'reb_simulation_state';
 
@@ -39,6 +41,53 @@ const App: React.FC = () => {
     tokens: 0,
     turns: 0
   });
+  const [pc, setPc] = useState<PlayerCharacter | null>(null);
+  const [reb, setReb] = useState<RebCharacter | null>(null);
+  const [generatingPortraits, setGeneratingPortraits] = useState<string[]>([]);
+  const getCurrentQuadrant = (): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
+  const { adr, oxy } = stats;  // Extract adr and oxy from stats object
+  
+  // Check which quadrant based on positive/negative values
+  if (adr >= 0 && oxy >= 0) return 'Q1';  // Both positive = Symbiote
+  if (adr < 0 && oxy >= 0) return 'Q2';   // Low adr, high oxy = Domestic
+  if (adr < 0 && oxy < 0) return 'Q3';    // Both negative = Void
+  return 'Q4';                             // High adr, low oxy = Combustion
+};
+const handleGeneratePortrait = async (
+  name: string, 
+  role: 'PC' | 'REB' | 'NPC',
+  extraData?: { temperament?: string; origin?: string; wound?: string }
+) => {
+  // Step 1: Mark this character as "generating"
+  setGeneratingPortraits(prev => [...prev, name]);
+  
+  try {
+    // Step 2: Call the portrait service
+    const portrait = await portraitService.generatePortrait({
+      name,
+      role,
+      currentQuadrant: getCurrentQuadrant(),
+      ...extraData  // Spread operator: includes all properties from extraData
+    });
+    
+    if (!portrait) return;  // If generation failed, stop here
+    
+    // Step 3: Save the portrait to the right character
+    if (role === 'PC') {
+      setPc(prev => prev ? { ...prev, portrait } : null);
+    } else if (role === 'REB') {
+      setReb(prev => prev ? { ...prev, portrait } : null);
+    } else {
+      // For NPCs, find the matching one and update it
+      setNpcs(prev => prev.map(npc => 
+        npc.name === name ? { ...npc, portrait } : npc
+      ));
+    }
+  } finally {
+    // Step 4: Remove from "generating" list (runs even if error occurred)
+    setGeneratingPortraits(prev => prev.filter(n => n !== name));
+  }
+};
 
   const [situationCountdown, setSituationCountdown] = useState(5);
 
@@ -381,7 +430,7 @@ const App: React.FC = () => {
           <MetaTerminal messages={messages} onSend={(txt) => handleSendMessage(txt, true)} onUpdateKernel={handleCacheContext} onAnalyzeDrift={handleAnalyzeDrift} onCommitIntervention={handleCommitIntervention} interventions={interventions} systemContext={systemContext} isProcessing={isProcessing} isCaching={isCaching} isAnalyzing={isAnalyzing} contextLoaded={!!systemContext} />
         )}
         {(view === 'reb' || view === 'pc' || view === 'anchors' || view === 'npcs' || view === 'situations') && (
-          <Dashboard view={view} stats={stats} anchors={anchors} npcs={npcs} situations={situations} inventory={inventory} sceneHistory={sceneHistory} lastDelta={messages[messages.length-1]?.hiddenStats || ""} situationCountdown={situationCountdown} />
+          <Dashboard view={view} stats={stats} anchors={anchors} npcs={npcs} situations={situations} inventory={inventory} sceneHistory={sceneHistory} lastDelta={messages[messages.length-1]?.hiddenStats || ""} situationCountdown={situationCountdown} pc={pc} reb={reb} currentQuadrant={getCurrentQuadrant()} onRegeneratePortrait={handleGeneratePortrait} generatingPortraits={generatingPortraits} />
         )}
       </main>
     </div>
