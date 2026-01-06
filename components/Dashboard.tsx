@@ -15,14 +15,17 @@ interface DashboardProps {
   sceneHistory: SceneSnapshot[];
   lastDelta?: string;
   situationCountdown?: number;
-   pc?: PlayerCharacter | null;
+  pc?: PlayerCharacter | null;
   reb?: RebCharacter | null;
   currentQuadrant?: 'Q1' | 'Q2' | 'Q3' | 'Q4';
   onRegeneratePortrait?: (name: string, role: 'PC' | 'REB' | 'NPC', extraData?: any) => void;
   generatingPortraits?: string[]
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situations, inventory, sceneHistory, lastDelta, situationCountdown = 5, pc, reb, currentQuadrant, onRegeneratePortrait, generatingPortraits = [] }) => {
+const Dashboard: React.FC<DashboardProps> = ({ 
+  view, stats, anchors, npcs, situations, inventory, sceneHistory, lastDelta, 
+  situationCountdown = 5, pc, reb, currentQuadrant, onRegeneratePortrait, generatingPortraits = [] 
+}) => {
 
   const tensionPoint = [
     { x: Math.min(500, Math.max(0, stats.adr)), y: Math.min(500, Math.max(0, stats.oxy)), name: 'Current State' }
@@ -35,7 +38,6 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
     label: `S${i}`
   }));
 
-  const mass = Math.floor(Math.abs(stats.adr) + Math.abs(stats.oxy) + (stats.entropy / 30));
   const vtMatch = lastDelta?.match(/VT:(\w+)([+-]\d+)/);
   const shadowLeakRisk = stats.adr > 350 || stats.oxy > 400 ? 'CRITICAL' : (stats.adr > 250 || stats.oxy > 300 ? 'HIGH' : 'STABLE');
 
@@ -90,12 +92,31 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
 
   const renderRebView = () => (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">REB Surveillance</h2>
-          <p className="text-gray-500 font-medium">Phase-space diagnostics and narrative flux history.</p>
+      <div className="flex justify-between items-center bg-[#111] border border-white/5 rounded-[40px] p-8 gap-8">
+        <div className="flex items-center gap-6 flex-1">
+          <PortraitDisplay 
+            portrait={reb?.portrait}
+            name={reb?.name || "REB_ENTITY"}
+            role="REB"
+            size="xl"
+            quadrant={currentQuadrant}
+            onRegenerate={onRegeneratePortrait ? () => onRegeneratePortrait(reb?.name || "REB", "REB") : undefined}
+            isGenerating={generatingPortraits.includes(reb?.name || "REB")}
+          />
+          <div>
+            <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase">{reb?.name || "REB Surveillance"}</h2>
+            <p className="text-gray-500 font-medium text-lg uppercase tracking-widest">{reb?.origin || "Central Engine Interface"}</p>
+            <div className="mt-4 flex gap-3">
+              <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-[10px] text-blue-400 font-black uppercase italic">
+                {reb?.temperament || 'Unknown Temperament'}
+              </span>
+              <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-black uppercase italic">
+                Wound: {reb?.wound || 'None'}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-4 items-end">
           <div className={`px-4 py-2 border rounded-xl text-[10px] font-black uppercase italic ${
             shadowLeakRisk === 'CRITICAL' ? 'bg-red-500/10 border-red-500 text-red-500 animate-pulse' : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
           }`}>
@@ -114,7 +135,6 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
         <StatBox icon={Thermometer} label="Entropy" value={stats.entropy} color="text-purple-400" desc="Physics Breakdown" />
       </div>
 
-      {/* Main Graph Grid: Matrix takes center stage (span 2), Flux on side (span 1) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col relative">
           <div className="flex justify-between items-center mb-6">
@@ -129,11 +149,10 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
                 <YAxis type="number" dataKey="y" hide domain={[0, 500]} />
                 <ZAxis type="number" range={[200, 200]} />
                 
-                {/* Quadrant Overlays with Explanatory Tags */}
-                <ReferenceArea x1={250} x2={500} y1={250} y2={500} fill="#3b82f6" fillOpacity={0.05} label={{ position: 'insideTopRight', value: 'SYNCHRONY (High Bond / High Tension)', fill: '#3b82f6', fontSize: 10, fontWeight: 900 }} />
-                <ReferenceArea x1={0} x2={250} y1={250} y2={500} fill="#ec4899" fillOpacity={0.05} label={{ position: 'insideTopLeft', value: 'SAFETY (High Bond / Low Tension)', fill: '#ec4899', fontSize: 10, fontWeight: 900 }} />
-                <ReferenceArea x1={250} x2={500} y1={0} y2={250} fill="#f43f5e" fillOpacity={0.05} label={{ position: 'insideBottomRight', value: 'COMBUSTION (Low Bond / High Tension)', fill: '#f43f5e', fontSize: 10, fontWeight: 900 }} />
-                <ReferenceArea x1={0} x2={250} y1={0} y2={250} fill="#6b7280" fillOpacity={0.05} label={{ position: 'insideBottomLeft', value: 'VOID (Low Bond / Low Tension)', fill: '#6b7280', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={250} x2={500} y1={250} y2={500} fill="#3b82f6" fillOpacity={0.05} label={{ position: 'insideTopRight', value: 'SYNCHRONY', fill: '#3b82f6', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={0} x2={250} y1={250} y2={500} fill="#ec4899" fillOpacity={0.05} label={{ position: 'insideTopLeft', value: 'SAFETY', fill: '#ec4899', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={250} x2={500} y1={0} y2={250} fill="#f43f5e" fillOpacity={0.05} label={{ position: 'insideBottomRight', value: 'COMBUSTION', fill: '#f43f5e', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={0} x2={250} y1={0} y2={250} fill="#6b7280" fillOpacity={0.05} label={{ position: 'insideBottomLeft', value: 'VOID', fill: '#6b7280', fontSize: 10, fontWeight: 900 }} />
                 
                 <ReferenceLine x={250} stroke="#333" strokeDasharray="5 5" />
                 <ReferenceLine y={250} stroke="#333" strokeDasharray="5 5" />
@@ -142,25 +161,12 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
                 <Scatter name="State" data={tensionPoint} fill="#3b82f6" shape="cross" className="filter drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
               </ScatterChart>
             </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5"><Crosshair size={60} className="text-white" /></div>
-          </div>
-          <div className="mt-4 flex justify-between px-2 text-[8px] text-gray-600 uppercase font-black tracking-[0.2em]">
-             <span>Restrained Environment</span>
-             <span>Adrenaline Flux Vector</span>
-             <span>Hyper-Intense Environment</span>
           </div>
         </div>
 
         <div className="space-y-8 flex flex-col">
            <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col flex-1">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Historical Flux</h3>
-                {vtMatch && (
-                  <span className="text-[8px] text-blue-400 font-black uppercase border border-blue-500/20 px-2 py-0.5 rounded-full">
-                    VT:{vtMatch[1]}
-                  </span>
-                )}
-              </div>
+              <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] mb-6">Historical Flux</h3>
               <div className="flex-1 w-full min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={historyData}>
@@ -183,36 +189,13 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
         </div>
       </div>
 
-      {/* REB Obsession Meter: Restored and enhanced */}
-      <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+      <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex items-center justify-between">
           <div className="flex items-center gap-8 flex-1">
-            <div className="flex flex-col">
-              <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em] mb-1">REB Obsession Progression</h3>
-              <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest leading-none">Terminal Flux Analysis</span>
-            </div>
+            <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">REB Obsession Progression</h3>
             <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden relative border border-white/5">
-              <div 
-                className="bg-blue-600 h-full transition-all duration-1000 shadow-[0_0_20px_rgba(37,99,235,0.8)]" 
-                style={{ width: `${stats.rebObsession}%` }} 
-              />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                 <div className="w-full h-px bg-white/10 opacity-30" />
-              </div>
+              <div className="bg-blue-600 h-full transition-all duration-1000" style={{ width: `${stats.rebObsession}%` }} />
             </div>
-            <div className="text-5xl font-black text-white italic tracking-tighter w-32 text-right tabular-nums">
-              {stats.rebObsession}%
-            </div>
-          </div>
-          <div className="ml-12 pl-12 border-l border-white/5 flex items-center gap-6">
-             <div className="text-right">
-                <span className="text-[9px] text-gray-500 font-black uppercase block tracking-widest mb-1">Force Status</span>
-                <span className={`text-xs font-black uppercase italic ${stats.rebObsession > 75 ? 'text-red-500 animate-pulse' : 'text-blue-400'}`}>
-                  {stats.rebObsession > 75 ? 'COLLISION_IMMINENT' : stats.rebObsession > 45 ? 'AGGRESSIVE_TRACKING' : 'PASSIVE_MONITOR'}
-                </span>
-             </div>
-             <div className="p-4 bg-white/5 rounded-2xl group-hover:scale-110 transition-transform">
-               <ArrowUpRight size={24} className="text-blue-500 opacity-50" />
-             </div>
+            <div className="text-5xl font-black text-white italic tracking-tighter w-32 text-right">{stats.rebObsession}%</div>
           </div>
       </div>
     </div>
@@ -220,12 +203,32 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
 
   const renderPcView = () => (
     <div className="space-y-8 animate-in slide-in-from-right duration-500">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">PC Psychology</h2>
-          <p className="text-gray-500 font-medium">Tracking drive, willpower, and clarity.</p>
+      <div className="flex items-center bg-[#111] border border-white/5 rounded-[40px] p-8 gap-8">
+        <PortraitDisplay 
+          portrait={pc?.portrait}
+          name={pc?.name || "PLAYER_CHARACTER"}
+          role="PC"
+          size="xl"
+          quadrant={currentQuadrant}
+          onRegenerate={onRegeneratePortrait ? () => onRegeneratePortrait(pc?.name || "PC", "PC") : undefined}
+          isGenerating={generatingPortraits.includes(pc?.name || "PC")}
+        />
+        <div className="flex-1">
+          <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase">{pc?.name || "PC Psychology"}</h2>
+          <p className="text-gray-500 font-medium text-lg uppercase tracking-widest">{pc?.origin || "Central Controller Interface"}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+             {pc?.skills?.map((skill, i) => (
+                <span key={i} className="px-3 py-1 bg-orange-500/10 border border-orange-500/20 rounded-full text-[10px] text-orange-400 font-black uppercase italic">
+                  {skill}
+                </span>
+             ))}
+             <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-black uppercase italic">
+                Wound: {pc?.wound || 'None'}
+             </span>
+          </div>
         </div>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatBox icon={Brain} label="Willpower" value={stats.willpower} color="text-orange-400" desc="Resistance" />
         <StatBox icon={Activity} label="Clarity" value={stats.clarity} color="text-amber-400" desc="Anchoring" />
@@ -234,6 +237,48 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
 
       <div className="bg-[#111] border border-white/5 rounded-[40px] p-8">
          <InventoryGrid owner="PC" title="Relic & Asset Inventory" />
+      </div>
+    </div>
+  );
+
+  const renderNpcView = () => (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex justify-between items-end"><h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">NPC Roster</h2></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {npcs.length === 0 ? (
+          <div className="col-span-full p-20 border border-dashed border-white/5 rounded-[40px] opacity-20 text-center"><Users size={48} className="mb-4" /><p className="font-bold uppercase tracking-widest text-[10px]">No telemetry detected.</p></div>
+        ) : (
+          npcs.map((npc, idx) => (
+            <div key={idx} className="bg-[#111] border border-white/5 p-8 rounded-[40px] group transition-all hover:bg-white/5">
+              <div className="flex items-start gap-6">
+                <PortraitDisplay 
+                  portrait={npc.portrait}
+                  name={npc.name}
+                  role="NPC"
+                  size="lg"
+                  status={npc.status as any}
+                  onRegenerate={onRegeneratePortrait ? () => onRegeneratePortrait(npc.name, "NPC") : undefined}
+                  isGenerating={generatingPortraits.includes(npc.name)}
+                />
+                <div className="flex-1 space-y-2 pt-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-xl font-black text-white italic tracking-tight">{npc.name}</h4>
+                      <p className="text-[10px] text-blue-400 uppercase font-black tracking-tighter">{npc.role}</p>
+                    </div>
+                  </div>
+                  <div className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                    npc.status === 'ACTING' ? 'bg-red-500/10 text-red-400' : 
+                    npc.status === 'WATCHING' ? 'bg-orange-500/10 text-orange-400' : 
+                    'bg-gray-500/10 text-gray-500'
+                  }`}>
+                    {npc.status}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -291,7 +336,6 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                        <h4 className="text-sm font-black text-gray-400 uppercase italic tracking-tight">{sit.label}</h4>
-                       <CheckCircle size={14} className="text-green-500/50" />
                     </div>
                     <p className="text-[11px] text-gray-600 leading-relaxed italic">{sit.resolutionSummary || "Plot point resolved without synopsis telemetry."}</p>
                   </div>
@@ -303,24 +347,6 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
       </div>
     );
   };
-
-  const renderNpcView = () => (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-end"><h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">NPC Roster</h2></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {npcs.length === 0 ? (
-          <div className="col-span-full p-20 border border-dashed border-white/5 rounded-[40px] opacity-20 text-center"><Users size={48} className="mb-4" /><p className="font-bold uppercase tracking-widest text-[10px]">No telemetry detected.</p></div>
-        ) : (
-          npcs.map((npc, idx) => (
-            <div key={idx} className="bg-[#111] border border-white/5 p-6 rounded-3xl group transition-all">
-              <div className="flex justify-between items-start mb-6"><div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-gray-500"><Users size={24} /></div><div className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${npc.status === 'ACTING' ? 'bg-red-500/10 text-red-400' : npc.status === 'WATCHING' ? 'bg-orange-500/10 text-orange-400' : 'bg-gray-500/10 text-gray-500'}`}>{npc.status}</div></div>
-              <h4 className="text-xl font-black text-white italic tracking-tight">{npc.name}</h4><p className="text-[10px] text-blue-400 uppercase font-black tracking-tighter">{npc.role}</p>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
 
   const renderAnchorsView = () => (
     <div className="space-y-8 animate-in zoom-in-95 duration-500">
@@ -352,13 +378,5 @@ const Dashboard: React.FC<DashboardProps> = ({ view, stats, anchors, npcs, situa
     </div>
   );
 };
-
-// Simple icon for resolved status
-const CheckCircle = ({ size, className }: any) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-    <polyline points="22 4 12 14.01 9 11.01" />
-  </svg>
-);
 
 export default Dashboard;

@@ -1,4 +1,5 @@
 
+
 export interface Message {
   role: 'user' | 'model';
   content: string;
@@ -58,6 +59,9 @@ export interface Chronicle {
     npcs: NPC[];
     situations: Situation[];
     inventory: Item[];
+    // Fix: Include PC and REB profile data in telemetry for export/import persistence
+    pc?: PlayerCharacter | null;
+    reb?: RebCharacter | null;
     systemContext?: string;
   };
   log: Message[];
