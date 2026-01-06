@@ -40,7 +40,8 @@ export class PortraitService {
     parts.push(STYLE_PRESETS.base);
     
     // Fallback if physical description is missing
-    const desc = request.physicalDescription || `A character named ${request.name} with ${request.temperament || 'complex'} personality`;
+    const charName = request.name || "A mysterious character";
+    const desc = request.physicalDescription || `${charName} with a ${request.temperament || 'complex'} aura`;
     parts.push(`Subject: ${desc}`);
     
     if (request.temperament && STYLE_PRESETS.temperament[request.temperament as keyof typeof STYLE_PRESETS.temperament]) {
@@ -83,7 +84,7 @@ export class PortraitService {
   }
 
   async generatePortrait(request: PortraitRequest): Promise<Portrait | null> {
-    const cacheKey = `${request.name}-${request.currentQuadrant || 'default'}`;
+    const cacheKey = `${request.name || 'default'}-${request.currentQuadrant || 'default'}`;
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.generatedAt < 1000 * 60 * 30) return cached;
     
@@ -93,7 +94,7 @@ export class PortraitService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-image",
-        contents: [{ parts: [{ text: `Generate a character portrait: ${prompt}` }] }],
+        contents: [{ parts: [{ text: `Generate a character portrait for a narrative engine: ${prompt}` }] }],
         config: { imageConfig: { aspectRatio: "1:1" } }
       });
       
@@ -112,7 +113,7 @@ export class PortraitService {
       
       const portrait: Portrait = {
         id: Math.random().toString(36).substr(2, 9),
-        characterName: request.name,
+        characterName: request.name || "Unnamed",
         base64Data,
         generatedAt: Date.now(),
         quadrantAtGeneration: request.currentQuadrant || 'unknown',

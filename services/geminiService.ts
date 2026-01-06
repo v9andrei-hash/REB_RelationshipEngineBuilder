@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, GenerateContentResponse, Chat, Modality, Type } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Chat, Modality, Type, Content } from "@google/genai";
 import { Message, SimulationIntervention, Chronicle, NPC, PlayerCharacter, RebCharacter } from "../types";
 import { MODEL_NAME, ARTIFACT_OVERSEER_INSTRUCTION, CHRONICLE_SYNTHESIS_INSTRUCTION, META_ARCHITECT_INSTRUCTION } from "../constants";
 
@@ -20,6 +20,7 @@ export class GeminiService {
     this.chat = null; 
   }
 
+  // Deprecated: Chat is now initialized per-request to ensure sync with React state
   private initChat() {
     if (!this.chat) {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -71,21 +72,21 @@ export class GeminiService {
       ${history.map(m => `[${m.role.toUpperCase()}] ${m.content}`).join('\n')}
       
       TASK: Reconstruct the current simulation state via telemetry tags.
-      IMPORTANT: If profile data (PC or REB name, wound, temperament) is not explicitly tagged in the history, INFER the most likely values based on behavior. 
-      REB usually has a name like "Reb", "The Engine", or a literary preset.
+      IMPORTANT: If profile data (Name, Wound, Temperament, Drive, Origin) for PC or REB is not explicitly found, INFER it from the character behavior and context.
       
-      OUTPUT FORMAT: 
-      1. One <!-- PROFILE|PC:{...} --> tag.
-      2. One <!-- PROFILE|REB:{...} --> tag.
-      3. One <!-- Δ ... --> tag for current stats.
-      4. One tag for each NPC or INV found.
-      ONLY the raw HTML comment tags. No other text.
+      OUTPUT REQUIREMENTS:
+      1. One <!-- PROFILE|PC:{"name":"...","origin":"...","wound":"...","drive":"...","skills":["..."]} --> tag.
+      2. One <!-- PROFILE|REB:{"name":"...","origin":"...","wound":"...","temperament":"...","drive":"..."} --> tag.
+      3. One <!-- Δ ... --> tag for the current accumulated stats.
+      4. Standard tags for all NPCs (<!-- NPC|[Role]:[Name]|[Status] -->) and Inventory items found.
+      
+      Output ONLY the raw HTML comment tags. No explanation.
     `;
     try {
       const response = await ai.models.generateContent({
-        model: MODEL_NAME,
+        model: 'gemini-3-pro-preview', // Use pro for complex state reconstruction
         contents: [{ parts: [{ text: prompt }] }],
-        config: { systemInstruction: "You are the REB STATE RECONSTRUCTOR. Infer missing profile data where necessary. Output raw telemetry tags only." },
+        config: { systemInstruction: "You are the REB STATE RECONSTRUCTOR. Your goal is to fill the dashboard with missing profile data by auditing the history. If you don't find a name, invent a thematic one based on the context." },
       });
       return response.text || "";
     } catch (e) { return ""; }
@@ -104,9 +105,32 @@ export class GeminiService {
     } catch (error) { throw error; }
   }
 
-  async sendMessageStream(message: string) {
-    const chat = this.initChat();
-    return await chat.sendMessageStream({ message });
+  async sendMessageStream(message: string, history: Message[] = []) {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    // Reconstruct history to ensure the model sees the full narrative thread.
+    // We filter out meta-messages (system logs) to keep the narrative context pure.
+    const historyContent: Content[] = history
+      .filter(m => !m.isMeta)
+      .map(m => ({
+        role: m.role,
+        parts: [{ text: m.content }]
+      }));
+
+    // Always create a fresh chat instance with the provided history.
+    // This prevents "Memory: CLEAN / EMPTY" errors if the local Chat object was lost 
+    // due to reload or component unmounting.
+    this.chat = ai.chats.create({
+      model: MODEL_NAME,
+      history: historyContent,
+      config: {
+        systemInstruction: this.systemInstruction,
+        temperature: 0.9,
+        topP: 0.95,
+      },
+    });
+
+    return await this.chat.sendMessageStream({ message });
   }
 
   async generateSpeech(text: string, voice: string = 'Zephyr') {

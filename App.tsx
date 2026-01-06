@@ -59,7 +59,14 @@ const App: React.FC = () => {
     role: 'PC' | 'REB' | 'NPC',
     extraData?: { temperament?: string; origin?: string; wound?: string }
   ) => {
-    const targetName = name || (role === 'REB' ? (reb?.name || "REB") : role === 'PC' ? (pc?.name || "PC") : "Character");
+    // Robust name selection
+    let targetName = name;
+    if (!targetName) {
+      if (role === 'REB') targetName = reb?.name || "REB";
+      else if (role === 'PC') targetName = pc?.name || "PC";
+      else targetName = "Unknown Entity";
+    }
+    
     setGeneratingPortraits(prev => [...prev, targetName]);
     
     try {
@@ -124,7 +131,7 @@ const App: React.FC = () => {
       const calibrationTags = await gemini.calibrateSimulation(messages);
       if (calibrationTags) {
         processResponseTelemetry(calibrationTags);
-        const msg: Message = { role: 'model', content: `[SYSTEM_CALIBRATION_COMPLETE]: Engine synced profile data and reconstructed character archetypes.`, isMeta: true };
+        const msg: Message = { role: 'model', content: `[SYSTEM_CALIBRATION_COMPLETE]: Reconstructed profiles and telemetry from historical analysis.`, isMeta: true };
         setMessages(prev => [...prev, msg]);
       }
     } finally {
@@ -137,13 +144,18 @@ const App: React.FC = () => {
     const npcMatches = Array.from(fullResponse.matchAll(/<!-- NPC\|(.*?) -->/g));
     const sitMatches = Array.from(fullResponse.matchAll(/<!-- SITUATION\|(.*?)\|(.*?)\|(.*?) -->/g));
     const invMatches = Array.from(fullResponse.matchAll(/<!-- INV\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/g));
-    const anchorMatches = Array.from(fullResponse.matchAll(/<!-- ANCHOR\|(.*?)\|(.*?) -->/g));
-    const profileMatches = Array.from(fullResponse.matchAll(/<!-- PROFILE\|(.*?)\|(.*?) -->/g));
+    
+    // Updated regex to capture 3 distinct parts for anchors as per instruction
+    const anchorMatches = Array.from(fullResponse.matchAll(/<!-- ANCHOR\|(.*?)\|(.*?)\|(.*?) -->/g));
+    
+    // Updated regex to capture content after pipe for manual splitting
+    const profileMatches = Array.from(fullResponse.matchAll(/<!-- PROFILE\|(.*?) -->/g));
 
     if (deltaMatch) {
       const deltaStr = deltaMatch[1];
+      // More resilient stat parsing (allows : and spaces, e.g. "Ar: +10" or "Ar +10")
       const parseStat = (key: string) => {
-        const m = deltaStr.match(new RegExp(`${key}([+-]?\\d+)`));
+        const m = deltaStr.match(new RegExp(`${key}[:\\s]*([+-]?\\d+)`));
         return m ? parseInt(m[1]) : 0;
       };
       setStats(prev => ({
@@ -157,21 +169,44 @@ const App: React.FC = () => {
         pcObsession: Math.min(100, Math.max(0, prev.pcObsession + parseStat('PCO'))),
         rebObsession: Math.min(100, Math.max(0, prev.rebObsession + parseStat('RO')))
       }));
+      
+      const trnMatch = deltaStr.match(/TRN[:\s]*(\d+)\/(\d+)/);
+      if (trnMatch) setSituationCountdown(Math.max(0, 5 - parseInt(trnMatch[1])));
     }
 
     if (profileMatches.length > 0) {
       profileMatches.forEach(m => {
         const content = m[1];
+        // Split by first colon to separate ROLE from JSON data
         const sepIdx = content.indexOf(':');
         if (sepIdx === -1) return;
-        const role = content.substring(0, sepIdx);
-        const dataStr = content.substring(sepIdx + 1);
+        
+        const role = content.substring(0, sepIdx).trim();
+        const dataStr = content.substring(sepIdx + 1).trim();
+        
         try {
           const parsed = JSON.parse(dataStr);
           if (role === 'PC') setPc(prev => ({ ...prev, ...parsed, portrait: prev?.portrait }));
           if (role === 'REB') setReb(prev => ({ ...prev, ...parsed, portrait: prev?.portrait }));
         } catch (e) { console.error("Profile parse fail", e); }
       });
+    }
+
+    if (anchorMatches.length > 0) {
+      const newAnchors: AnchorPoint[] = anchorMatches.map(m => {
+        const value = parseInt(m[3] || '0');
+        return {
+          id: Math.random().toString(36).substr(2, 9),
+          timestamp: Date.now(),
+          act: stats.act,
+          week: stats.week,
+          label: m[1] || 'Unknown Point',
+          description: m[2] || 'No description.',
+          obsessionAtTime: value,
+          dominantForce: value > 50 ? 'PC' : 'REB'
+        };
+      });
+      setAnchors(prev => [...prev, ...newAnchors]);
     }
 
     if (npcMatches.length > 0) {
@@ -229,9 +264,15 @@ const App: React.FC = () => {
 
     try {
       let fullResponse = "";
+      
+      // Pass the filtered history (removing meta-logs) to the service
+      // This ensures the narrative engine sees the full context even if the component reloaded
       const stream = isMeta 
         ? gemini.sendMetaMessageStream(text, messages)
-        : await gemini.sendMessageStream(pendingQueue ? `[SYSTEM_QUEUE: ${pendingQueue}]\n${text}` : text);
+        : await gemini.sendMessageStream(
+            pendingQueue ? `[SYSTEM_QUEUE: ${pendingQueue}]\n${text}` : text,
+            messages.filter(m => !m.isMeta)
+          );
 
       if (!isMeta) setPendingQueue(null);
 
@@ -245,6 +286,7 @@ const App: React.FC = () => {
         });
       }
 
+      // Restore turn and token counting
       const turnTokens = Math.floor((text.length + fullResponse.length) / 4);
       setStats(prev => ({ 
         ...prev, 
@@ -271,6 +313,71 @@ const App: React.FC = () => {
     }
   };
 
+  const handleExport = () => {
+    setIsExporting(true);
+    const chronicle: Chronicle = {
+      version: "3.5.1",
+      timestamp: new Date().toISOString(),
+      summary: { actTitle: `Act ${stats.act}`, narrativeArc: "User Session", themes: [] },
+      characters: { 
+        pc: { name: pc?.name || "Unknown", initialState: "", currentState: "", progressionNote: "", momentum: "Stagnant" },
+        reb: { name: reb?.name || "Unknown", initialState: "", currentState: "", progressionNote: "", momentum: "Stagnant" },
+        npcs: []
+      },
+      telemetry: {
+        finalStats: stats,
+        history: sceneHistory,
+        anchors,
+        npcs,
+        situations,
+        inventory,
+        pc,
+        reb,
+        systemContext
+      },
+      log: messages,
+      resumptionPayload: ""
+    };
+    
+    const blob = new Blob([JSON.stringify(chronicle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `REB_CHRONICLE_${Date.now()}.json`;
+    a.click();
+    setIsExporting(false);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.log) setMessages(data.log);
+        if (data.telemetry) {
+          const t = data.telemetry;
+          if (t.finalStats) setStats(t.finalStats);
+          if (t.anchors) setAnchors(t.anchors);
+          if (t.npcs) setNpcs(t.npcs);
+          if (t.situations) setSituations(t.situations);
+          if (t.inventory) setInventory(t.inventory);
+          if (t.pc) setPc(t.pc);
+          if (t.reb) setReb(t.reb);
+          if (t.systemContext) {
+            setSystemContext(t.systemContext);
+            gemini.setSystemInstruction(t.systemContext);
+          }
+        }
+        alert("Chronicle synthesized successfully.");
+      } catch (err) {
+        alert("Corrupted chronicle data.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleClearSession = () => { if (confirm("Initialize system wipe?")) { localStorage.removeItem(STORAGE_KEY); window.location.reload(); } };
 
   return (
@@ -278,7 +385,8 @@ const App: React.FC = () => {
       <Sidebar 
         currentView={view} setView={setView} stats={stats} 
         anchorCount={anchors.length} npcCount={npcs.length} sitCount={situations.length}
-        onExport={() => {}} onImport={() => {}} onClear={handleClearSession}
+        onExport={handleExport} onImport={handleImport} onClear={handleClearSession}
+        isExporting={isExporting}
       />
       <main className="flex-1 flex flex-col relative">
         {view === 'context' && <ContextEditor onSave={async (c) => { setIsCaching(true); await gemini.setSystemInstruction(c); setSystemContext(c); setIsCaching(false); setView('chat'); }} isCaching={isCaching} initialValue={systemContext} />}
