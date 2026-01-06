@@ -1,0 +1,5 @@
+{
+  "name": "REB Engine",
+  "description": "A professional management interface for the REB Simulation Engine, featuring context optimization, token tracking, and a high-fidelity narrative chat interface powered by Gemini.",
+  "requestFramePermissions": []
+}
