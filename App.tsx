@@ -173,8 +173,8 @@ const App: React.FC = () => {
           updatedStats.clarity += parseStat('PCC');
           updatedStats.willpower += parseStat('PCW');
           
-          // Narrative physics updates
-          updatedStats.entropy += parseStat('En'); 
+          // Narrative physics updates (En, PCO, RO)
+          updatedStats.entropy += parseStat('En');
           updatedStats.pcObsession = Math.min(100, Math.max(0, updatedStats.pcObsession + parseStat('PCO')));
           updatedStats.rebObsession = Math.min(100, Math.max(0, updatedStats.rebObsession + parseStat('RO')));
 
