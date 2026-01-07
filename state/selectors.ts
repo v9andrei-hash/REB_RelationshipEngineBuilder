@@ -1,4 +1,3 @@
-
 import { SimulationState } from '../types/simulation';
 import { AwarenessState, AlignmentState } from '../types/characterArc';
 import { getActiveCrisis, CrisisState } from '../types/crisis';
@@ -30,3 +29,37 @@ export const selectBondQuadrant = (state: SimulationState): 'Q1' | 'Q2' | 'Q3' |
   if (adrenaline < 0 && oxytocin < 0) return 'Q3';
   return 'Q4';
 };
+
+export interface DashboardStats {
+  adr: number;
+  oxy: number;
+  favor: number;
+  entropy: number;
+  pcAL: number;
+  pcAW: number;
+  pcOB: number;
+  rebAL: number;
+  rebAW: number;
+  rebOB: number;
+  week: number;
+  turns: number;
+  act: number;
+  tokens: number;
+}
+
+export const selectDashboardStats = (state: SimulationState): DashboardStats => ({
+  adr: state.bondMatrix.adrenaline as number,
+  oxy: state.bondMatrix.oxytocin as number,
+  favor: state.bondMatrix.favor as number,
+  entropy: state.bondMatrix.entropy as number,
+  pcAL: state.pc.alignment,
+  pcAW: state.pc.awareness,
+  pcOB: state.pc.obsession,
+  rebAL: state.reb.alignment,
+  rebAW: state.reb.awareness,
+  rebOB: state.reb.obsession,
+  week: state.week,
+  turns: state.turnCounter,
+  act: state.act.actNumber,
+  tokens: state.densityTotal
+});

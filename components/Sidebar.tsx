@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { Layout, MessageSquare, Database, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Terminal as TerminalIcon, Loader2, Clock } from 'lucide-react';
 
@@ -120,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, stats, anchorCo
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-white font-mono" title="Tokens consumed">
-                {stats.tokens.toLocaleString()} <span className="text-gray-600">tkn</span>
+                {(stats.tokens || 0).toLocaleString()} <span className="text-gray-600">tkn</span>
               </span>
               <div className="w-px h-2 bg-white/10 mx-0.5" />
               <span className="text-[10px] text-blue-400 font-mono" title="Narrative Cycles">
@@ -132,12 +131,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, stats, anchorCo
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <span className="text-[9px] text-gray-500 uppercase font-black">Force Balance</span>
-              <span className={`text-[10px] font-black uppercase ${stats.pcObsession > Math.abs(stats.entropy / 4) ? 'text-orange-500' : 'text-blue-500'}`}>
-                {stats.pcObsession > Math.abs(stats.entropy / 4) ? 'PC Leading' : 'REB Restrained'}
+              <span className={`text-[10px] font-black uppercase ${(stats.pcOB || 0) > Math.abs((stats.entropy || -50) / 4) ? 'text-orange-500' : 'text-blue-500'}`}>
+                {(stats.pcOB || 0) > Math.abs((stats.entropy || -50) / 4) ? 'PC Leading' : 'REB Restrained'}
               </span>
             </div>
             <div className="h-1.5 w-full bg-white/5 rounded-full flex overflow-hidden border border-white/5">
-              <div className="bg-orange-600 h-full transition-all duration-500" style={{ width: `${stats.pcObsession}%` }} />
+              <div className="bg-orange-600 h-full transition-all duration-500" style={{ width: `${stats.pcOB || 30}%` }} />
               <div className="bg-blue-600 h-full flex-1" />
             </div>
           </div>

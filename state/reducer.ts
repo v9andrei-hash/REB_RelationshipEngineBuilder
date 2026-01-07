@@ -1,4 +1,4 @@
-import { SimulationState } from '../types/simulation';
+import { SimulationState, NPCState, SituationState, PressureSource } from '../types/simulation';
 import { SimulationAction } from './actions';
 import { selectAlignmentState, selectAwarenessState } from './selectors';
 import { createAdrenaline, createOxytocin, createFavor, createEntropy } from '../types/bondMatrix';
@@ -137,6 +137,79 @@ export function simulationReducer(
       return {
         ...state,
         configuration: action.newConfig
+      };
+
+    case 'WEEK_ADVANCED':
+      return {
+        ...state,
+        week: state.week + 1,
+        densityTotal: 0,
+        turnCounter: 0,
+        bondMatrix: {
+          ...state.bondMatrix,
+          entropy: createEntropy(
+            Math.min(-1, state.bondMatrix.entropy + state.act.entropyDecay)
+          )
+        }
+      };
+
+    case 'SITUATION_DRAWN':
+      return {
+        ...state,
+        situations: [
+          ...state.situations,
+          {
+            id: action.situation.id,
+            label: action.situation.label,
+            status: 'TRIGGERED' as const,
+            triggerCondition: action.situation.triggerCondition
+          }
+        ]
+      };
+
+    case 'SITUATION_RESOLVED':
+      return {
+        ...state,
+        situations: state.situations.map(s =>
+          s.label === action.label
+            ? { ...s, status: 'RESOLVED' as const, resolutionSummary: action.synopsis }
+            : s
+        )
+      };
+
+    case 'NPC_STATUS_CHANGED':
+      return {
+        ...state,
+        npcs: {
+          ...state.npcs,
+          [action.npcName]: {
+            ...state.npcs[action.npcName],
+            name: action.npcName,
+            status: action.status
+          }
+        }
+      };
+
+    case 'PRESSURE_ADDED':
+      return {
+        ...state,
+        pressures: [
+          ...state.pressures,
+          {
+            id: `${action.tier}-${Date.now()}`,
+            tier: action.tier,
+            source: action.source,
+            active: true
+          }
+        ]
+      };
+
+    case 'PRESSURE_RESOLVED':
+      return {
+        ...state,
+        pressures: state.pressures.map(p =>
+          p.source === action.source ? { ...p, active: false } : p
+        )
       };
 
     default:

@@ -1,9 +1,7 @@
-
 import { SimulationState } from '../types/simulation';
 import { createAdrenaline, createOxytocin, createFavor, createEntropy } from '../types/bondMatrix';
 
 export const createInitialState = (): SimulationState => ({
-  // Added missing cruxHistory and pendingCruxPressure properties to satisfy SimulationState interface
   version: "3.5.1",
   timestamp: Date.now(),
   bondMatrix: {
@@ -42,6 +40,10 @@ export const createInitialState = (): SimulationState => ({
   turnCounter: 0,
   week: 1,
   densityTotal: 0,
+  npcs: {},
+  situations: [],
+  anchors: [],
+  pressures: [],
   cruxHistory: [],
   pendingCruxPressure: false
 });

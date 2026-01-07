@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { gemini } from './services/geminiService';
 import { Message, SimulationIntervention, Chronicle, NPC, Situation, SceneSnapshot, Item, Portrait, PlayerCharacter, RebCharacter, CharacterArc, ConfigurationType } from './types';
@@ -10,6 +9,7 @@ import ContextEditor from './components/ContextEditor';
 import { portraitService } from './services/imageService';
 import { SimulationProvider } from './context/SimulationContext';
 import { useSimulation } from './hooks/useSimulation';
+import { selectDashboardStats } from './state/selectors';
 
 const AppContent: React.FC = () => {
   const [view, setView] = useState<'chat' | 'context' | 'reb' | 'pc' | 'anchors' | 'npcs' | 'situations' | 'meta'>('context');
@@ -62,13 +62,23 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const dashboardStats = selectDashboardStats(state);
+
   return (
     <div className="flex h-screen w-full bg-[#0a0a0a] overflow-hidden text-sm">
       <Sidebar 
-        currentView={view} setView={setView} 
-        stats={{ ...state.bondMatrix, ...state.pc, tokens: state.densityTotal, turns: state.turnCounter }} 
-        anchorCount={0} npcCount={0} sitCount={0}
-        onExport={() => {}} onImport={() => {}} onClear={() => {}}
+        currentView={view} 
+        setView={setView} 
+        stats={{ 
+          ...dashboardStats,
+          pcObsession: state.pc.obsession
+        }} 
+        anchorCount={state.anchors?.length || 0} 
+        npcCount={Object.keys(state.npcs || {}).length} 
+        sitCount={state.situations?.length || 0}
+        onExport={() => {}} 
+        onImport={() => {}} 
+        onClear={() => {}}
       />
       <main className="flex-1 flex flex-col relative">
         {view === 'context' && <ContextEditor onSave={async (c) => { setIsCaching(true); await gemini.setSystemInstruction(c); setSystemContext(c); setIsCaching(false); setView('chat'); }} isCaching={isCaching} initialValue={systemContext} />}
@@ -77,9 +87,14 @@ const AppContent: React.FC = () => {
         {(view === 'reb' || view === 'pc') && (
           <Dashboard 
             view={view} 
-            stats={{ adr: state.bondMatrix.adrenaline, oxy: state.bondMatrix.oxytocin, favor: state.bondMatrix.favor, entropy: state.bondMatrix.entropy, pcAL: state.pc.alignment, pcAW: state.pc.awareness, pcOB: state.pc.obsession, rebAL: state.reb.alignment, rebAW: state.reb.awareness, rebOB: state.reb.obsession }} 
-            anchors={[]} npcs={[]} situations={[]} inventory={[]} sceneHistory={[]} 
-            pc={null} reb={null} 
+            stats={dashboardStats} 
+            anchors={state.anchors || []} 
+            npcs={Object.values(state.npcs || {})} 
+            situations={state.situations || []} 
+            inventory={[]} 
+            sceneHistory={[]} 
+            pc={null} 
+            reb={null} 
           />
         )}
       </main>

@@ -17,3 +17,6 @@ export type RelationshipConfiguration =
   | ConvergentConfig 
   | DivergentConfig 
   | AsymmetricConfig;
+
+// Added ConfigurationType for use in components
+export type ConfigurationType = RelationshipConfiguration['type'];

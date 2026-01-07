@@ -1,13 +1,24 @@
-
 import { Dispatch } from 'react';
 import { SimulationAction } from '../state/actions';
 import { SimulationState } from '../types/simulation';
 import { validateDelta } from '../validation/validator';
 import { ConflictTier } from '../types/conflict';
+import { RelationshipConfiguration } from '../types/configuration';
 
 export interface ProcessResult {
   cleanText: string;
   errors: string[];
+}
+
+const VALID_TIERS: ConflictTier[] = ['INT', 'PER', 'EXT', 'INT_PER', 'PER_EXT', 'INT_EXT', 'INT_PER_EXT'];
+
+function normalizeTier(raw: string): ConflictTier {
+  const normalized = raw.trim().replace(/\+/g, '_').toUpperCase();
+  if (VALID_TIERS.includes(normalized as ConflictTier)) {
+    return normalized as ConflictTier;
+  }
+  console.warn(`Invalid conflict tier: ${raw}, defaulting to INT`);
+  return 'INT';
 }
 
 /**
@@ -23,8 +34,6 @@ export function processLLMResponse(
 
   // 1. Process Delta (Physics)
   const validation = validateDelta(responseText, currentState);
-  // Using explicit literal comparison to fix narrowing issues in some TypeScript environments
-  // This ensures 'validation' is correctly narrowed to the error or success branch
   if (validation.valid === false) {
     errors.push(...validation.errors.map(e => e.message));
   } else if (validation.valid === true) {
@@ -36,31 +45,54 @@ export function processLLMResponse(
   }
 
   // 2. Process CRUX Moments
-  // Format: <!-- CRUX|[Tier]|[Description]|[Want_Path]|[Need_Path] -->
   const cruxMatch = responseText.match(/<!-- CRUX\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/);
   if (cruxMatch) {
-    const [_, tier, desc, want, need] = cruxMatch;
+    const [_, tierRaw, desc, want, need] = cruxMatch;
     dispatch({
       type: 'CRUX_TRIGGERED',
       definition: {
-        label: "CRITICAL CHOICE",
-        tier: tier as ConflictTier,
+        label: desc.substring(0, 30),
+        tier: normalizeTier(tierRaw),
         description: desc,
-        wantPath: { action: want, stakes: "Sacrifice growth for stability" },
-        needPath: { action: need, stakes: "Embrace transformation" }
+        wantPath: { action: want, stakes: "Pursue conscious goal" },
+        needPath: { action: need, stakes: "Embrace unconscious truth" }
       }
     });
   }
 
   // 3. Process Configuration Shifts
-  const configMatch = responseText.match(/<!-- CONFIG\|(.*?)\|/);
+  const configMatch = responseText.match(/<!-- CONFIG\|(.*?)\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/);
   if (configMatch) {
-    // Note: Simple implementation for prototype - casting to any to bypass strict literal description checks 
-    // defined in the RelationshipConfiguration union types.
-    dispatch({
-      type: 'CONFIGURATION_SHIFT',
-      newConfig: { type: configMatch[1], description: "Dynamic reconfiguration", tensions: [] } as any
-    });
+    const [_, configType, pcWant, pcNeed, rebWant, rebNeed] = configMatch;
+    const validTypes = ['ALLIED_WANTS', 'ALLIED_NEEDS', 'CHIASTIC', 'CONVERGENT', 'DIVERGENT', 'ASYMMETRIC'];
+    
+    if (validTypes.includes(configType)) {
+      let newConfig: RelationshipConfiguration;
+      
+      switch (configType) {
+        case 'ALLIED_WANTS':
+          newConfig = { type: 'ALLIED_WANTS', description: "Aligned goals, opposed truths" };
+          break;
+        case 'ALLIED_NEEDS':
+          newConfig = { type: 'ALLIED_NEEDS', description: "Opposed goals, aligned truths" };
+          break;
+        case 'CHIASTIC':
+          newConfig = { type: 'CHIASTIC', description: "Cross-mirrored pursuit" };
+          break;
+        case 'CONVERGENT':
+          newConfig = { type: 'CONVERGENT', description: "Harmonious but fragile" };
+          break;
+        case 'DIVERGENT':
+          newConfig = { type: 'DIVERGENT', description: "Fundamental incompatibility" };
+          break;
+        case 'ASYMMETRIC':
+        default:
+          newConfig = { type: 'ASYMMETRIC', description: "Nuanced partial alignments", tensions: [`${pcWant} vs ${rebWant}`] };
+          break;
+      }
+      
+      dispatch({ type: 'CONFIGURATION_SHIFT', newConfig });
+    }
   }
 
   // 4. Process NPC Updates

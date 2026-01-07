@@ -1,16 +1,15 @@
-
 import React from 'react';
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
 import { Zap, TrendingUp, Shield, Thermometer, Activity, Users, Layers, Timer, Milestone, Brain, Flame, ArrowUpRight, Crosshair, Package, Archive, Box, Star, Eye, Target, Link } from 'lucide-react';
-import { AnchorPoint, NPC, Situation, SceneSnapshot, Item, PlayerCharacter, RebCharacter, ConfigurationType } from '../types';
+import { NPCState, SituationState, AnchorPoint, SceneSnapshot, Item, PlayerCharacter, RebCharacter, ConfigurationType } from '../types';
 import PortraitDisplay from './PortraitDisplay';
 
 interface DashboardProps {
   view: 'reb' | 'pc' | 'anchors' | 'npcs' | 'situations';
   stats: any;
   anchors: AnchorPoint[];
-  npcs: NPC[];
-  situations: Situation[];
+  npcs: any[];
+  situations: SituationState[];
   inventory: Item[];
   sceneHistory: SceneSnapshot[];
   lastDelta?: string;
@@ -215,23 +214,29 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="bg-[#111] p-8 rounded-[40px] border border-white/5 space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] text-gray-500 font-black uppercase flex items-center gap-2"><Brain size={14} className="text-orange-400" /> Willpower Drain</span>
-                <span className="text-lg font-black text-white italic mono">{stats.willpower}/10</span>
+                <span className="text-[10px] text-gray-500 font-black uppercase flex items-center gap-2">
+                  <Flame size={14} className="text-red-500" /> Obsession Amplifier
+                </span>
+                <span className="text-lg font-black text-white italic mono">
+                  {(1 + stats.pcOB / 100).toFixed(2)}x
+                </span>
               </div>
-              <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                <div className="h-full bg-orange-500 transition-all" style={{ width: `${(stats.willpower / 10) * 100}%` }} />
-              </div>
+              <p className="text-[9px] text-gray-600">
+                All Alignment changes multiplied by this factor
+              </p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] text-gray-500 font-black uppercase flex items-center gap-2"><Eye size={14} className="text-amber-400" /> Narrative Clarity</span>
-                <span className={`text-lg font-black italic mono ${stats.clarity < 30 ? 'text-red-500 animate-pulse' : 'text-white'}`}>{stats.clarity}%</span>
+                <span className="text-[10px] text-gray-500 font-black uppercase flex items-center gap-2">
+                  <Target size={14} className="text-amber-400" /> CRUX Pattern
+                </span>
+                <span className={`text-sm font-black uppercase ${
+                  stats.pcAL < -20 ? 'text-blue-400' : stats.pcAL > 20 ? 'text-orange-400' : 'text-gray-400'
+                }`}>
+                  {stats.pcAL < -20 ? 'WANT-PURSUIT' : stats.pcAL > 20 ? 'NEED-APPROACH' : 'LIMINAL'}
+                </span>
               </div>
-              <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                <div className="h-full bg-amber-500 transition-all" style={{ width: `${stats.clarity}%` }} />
-              </div>
-              {stats.clarity < 30 && <p className="text-[9px] text-red-500 font-black uppercase animate-pulse">Critical: Sensor Unreliability Probable</p>}
             </div>
           </div>
         </div>
@@ -275,6 +280,22 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
             ))}
           </div>
+        )}
+        {view === 'situations' && (
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             {situations.map((sit) => (
+               <div key={sit.id} className="bg-[#111] border border-white/5 p-8 rounded-[40px]">
+                 <div className="flex justify-between items-center mb-4">
+                   <h4 className="text-lg font-black text-white italic">{sit.label}</h4>
+                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${sit.status === 'TRIGGERED' ? 'bg-orange-500/10 text-orange-500' : sit.status === 'RESOLVED' ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-500'}`}>
+                     {sit.status}
+                   </span>
+                 </div>
+                 <p className="text-xs text-gray-400 mb-4 tracking-tight uppercase font-bold tracking-widest">Trigger: {sit.triggerCondition}</p>
+                 {sit.resolutionSummary && <p className="text-xs text-blue-300 italic">Result: {sit.resolutionSummary}</p>}
+               </div>
+             ))}
+           </div>
         )}
       </div>
     </div>
