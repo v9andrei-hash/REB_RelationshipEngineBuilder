@@ -12,8 +12,6 @@ export interface RawDelta {
   reb_al: number;
   reb_aw: number;
   reb_ob: number;
-  trn_current: number;
-  trn_max: number;
   vt_code: string;
   vt_mag: number;
 }
@@ -33,9 +31,10 @@ export function parseDelta(raw: string): ParseResult<RawDelta> {
    * - Optional colons after labels (Ar: vs Ar)
    * - Varying whitespace between labels and values
    * - Case insensitivity
-   * - Flexible TRN and VT formatting (handles VT:None or VT:LH+5)
+   * - Flexible VT formatting (handles VT:None or VT:LH+5)
+   * - TRN group removed as per user request
    */
-  const deltaRegex = /<!--\s*Δ\s*Ar:?\s*([+-]?\d+)\s*Ox:?\s*([+-]?\d+)\s*Fv:?\s*([+-]?\d+)\s*En:?\s*([+-]?\d+)\s*PC_AL:?\s*([+-]?\d+)\s*PC_AW:?\s*([+-]?\d+)\s*PC_OB:?\s*([+-]?\d+)\s*REB_AL:?\s*([+-]?\d+)\s*REB_AW:?\s*([+-]?\d+)\s*REB_OB:?\s*([+-]?\d+)\s*TRN:?\s*(\d+)\s*\/\s*(\d+)\s*VT:?\s*([A-Z]+|None)\s*([+-]?\d+)?\s*-->/i;
+  const deltaRegex = /<!--\s*Δ\s*Ar:?\s*([+-]?\d+)\s*Ox:?\s*([+-]?\d+)\s*Fv:?\s*([+-]?\d+)\s*En:?\s*([+-]?\d+)\s*PC_AL:?\s*([+-]?\d+)\s*PC_AW:?\s*([+-]?\d+)\s*PC_OB:?\s*([+-]?\d+)\s*REB_AL:?\s*([+-]?\d+)\s*REB_AW:?\s*([+-]?\d+)\s*REB_OB:?\s*([+-]?\d+)\s*VT:?\s*([A-Z]+|None)\s*([+-]?\d+)?\s*-->/i;
   
   const match = raw.match(deltaRegex);
   
@@ -59,10 +58,8 @@ export function parseDelta(raw: string): ParseResult<RawDelta> {
       reb_al: parseInt(match[8]),
       reb_aw: parseInt(match[9]),
       reb_ob: parseInt(match[10]),
-      trn_current: parseInt(match[11]),
-      trn_max: parseInt(match[12]),
-      vt_code: match[13].toUpperCase(),
-      vt_mag: match[14] ? parseInt(match[14]) : 0 // Default to 0 if magnitude is missing
+      vt_code: match[11].toUpperCase(),
+      vt_mag: match[12] ? parseInt(match[12]) : 0 // Default to 0 if magnitude is missing
     }
   };
 }

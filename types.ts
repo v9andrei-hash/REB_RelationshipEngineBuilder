@@ -11,7 +11,9 @@ export * from './types/crisis';
 // UI-specific types (not part of state model)
 export interface Message {
   role: 'user' | 'model';
-  content: string;
+  content: string;      // Main narrative
+  ooc?: string;         // [OOC] content
+  meta?: string;        // [META] content
   hiddenStats?: string;
   isMeta?: boolean;
   compliance?: {
@@ -20,8 +22,13 @@ export interface Message {
   };
 }
 
-// Removed Portrait definition from here as it now lives in types/simulation.ts 
-// to avoid circular dependency issues when imported by state-aware types.
+export interface SystemLogEntry {
+  id: string;
+  timestamp: Date;
+  type: 'meta' | 'error' | 'warning' | 'info';
+  source: 'llm' | 'parser' | 'validator' | 'app';
+  message: string;
+}
 
 export interface PortraitRequest {
   name: string;

@@ -1,43 +1,54 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useCallback, useMemo } from 'react';
 import { gemini } from './services/geminiService';
-import { Message, SimulationIntervention, Chronicle, NPC, Situation, SceneSnapshot, Item, Portrait, PlayerCharacter, RebCharacter, CharacterArc, ConfigurationType } from './types';
+import { Message, SystemLogEntry } from './types';
 import Sidebar from './components/Sidebar';
-import ChatInterface from './components/ChatInterface';
-import MetaTerminal from './components/MetaTerminal';
+import SimulationTerminal from './components/SimulationTerminal';
+import SystemLog from './components/SystemLog';
 import Dashboard from './components/Dashboard';
-import ContextEditor from './components/ContextEditor';
-import { portraitService } from './services/imageService';
+import SettingsPanel from './components/SettingsPanel';
 import { SimulationProvider } from './context/SimulationContext';
 import { useSimulation } from './hooks/useSimulation';
-import { selectDashboardStats } from './state/selectors';
+import { selectDashboardStats, selectCruxReadiness, selectSituationSuggestion } from './state/selectors';
 import { createInitialState } from './state/initial';
+import { routeOutput } from './services/outputRouter';
+import { checkSemanticDrift } from './services/semanticValidator';
 
 const AppContent: React.FC = () => {
-  const [view, setView] = useState<'chat' | 'context' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations' | 'meta'>('context');
+  const [view, setView] = useState<'chat' | 'settings' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations'>('settings');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [logEntries, setLogEntries] = useState<SystemLogEntry[]>([]);
   const [systemContext, setSystemContext] = useState<string>('');
   const [isCaching, setIsCaching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [interventions, setInterventions] = useState<SimulationIntervention[]>([]);
   
   const { state, applyRawResponse, dispatch } = useSimulation();
 
-  const handleSendMessage = async (text: string, isMeta: boolean = false) => {
+  const addLog = useCallback((type: SystemLogEntry['type'], source: SystemLogEntry['source'], message: string) => {
+    setLogEntries(prev => [...prev, {
+      id: Math.random().toString(36).substr(2, 9),
+      timestamp: new Date(),
+      type,
+      source,
+      message
+    }]);
+  }, []);
+
+  const handleSendMessage = async (text: string) => {
     if (!text.trim() || isProcessing) return;
-    const newUserMessage: Message = { role: 'user', content: text, isMeta };
+    
+    const newUserMessage: Message = { role: 'user', content: text };
     setMessages(prev => [...prev, newUserMessage]);
     setIsProcessing(true);
+    addLog('info', 'app', `Sending transmission: "${text.substring(0, 30)}..."`);
 
     try {
       let fullResponse = "";
       let usageMetadata: any = null;
       
-      const streamResponse = isMeta 
-        ? gemini.sendMetaMessageStream(text, messages)
-        : await gemini.sendMessageStream(text, messages.filter(m => !m.isMeta));
+      const streamResponse = await gemini.sendMessageStream(text, messages);
 
-      setMessages(prev => [...prev, { role: 'model', content: '', isMeta }]);
+      setMessages(prev => [...prev, { role: 'model', content: '' }]);
 
       for await (const chunk of streamResponse) {
         const c = chunk as any;
@@ -54,7 +65,19 @@ const AppContent: React.FC = () => {
         });
       }
 
+      // 1. Route the Output
+      const routed = routeOutput(fullResponse);
+      
+      // 2. Process Telemetry (Physics)
       const { cleanText, errors, extractedTags } = applyRawResponse(fullResponse);
+
+      // 3. Semantic Validation
+      const driftWarnings = checkSemanticDrift(routed.simulation, state);
+
+      // 4. Update Logs
+      if (routed.systemLog) addLog('meta', 'llm', routed.systemLog);
+      errors.forEach(err => addLog('error', 'validator', err));
+      driftWarnings.forEach(w => addLog('warning', 'validator', `[${w.type.toUpperCase()}] ${w.message}`));
       
       if (usageMetadata) {
         dispatch({
@@ -68,35 +91,48 @@ const AppContent: React.FC = () => {
         const last = prev[prev.length - 1];
         return [...prev.slice(0, -1), { 
           ...last, 
-          content: cleanText,
+          content: routed.simulation,
+          ooc: routed.simulationOOC,
+          meta: routed.systemLog,
           hiddenStats: extractedTags.join('\n'),
-          compliance: { isPassed: errors.length === 0, violations: errors }
+          compliance: { isPassed: errors.length === 0 && driftWarnings.length === 0, violations: [...errors, ...driftWarnings.map(w => w.message)] }
         }];
       });
-    } catch (error) {
+      
+      addLog('info', 'parser', `Transmission processed. Tags found: ${extractedTags.length}`);
+
+    } catch (error: any) {
+      addLog('error', 'app', `Engine error: ${error.message || 'Connection severed.'}`);
       setMessages(prev => [...prev, { role: 'model', content: "Engine error: Connection severed." }]);
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const handleTriggerCrux = () => handleSendMessage("(CRUX)");
+  const handleDrawSituation = () => handleSendMessage("(SITUATION)");
+
   const handleClearSession = () => {
     if (window.confirm("Initiate Hard Reset? All narrative memory and engine state will be purged.")) {
       setMessages([]);
+      setLogEntries([]);
       dispatch({ type: 'INITIALIZE', payload: createInitialState() });
       gemini.setSystemInstruction('');
       setSystemContext('');
-      setView('context');
+      setView('settings');
+      addLog('warning', 'app', 'System reset initiated. State purged.');
     }
   };
 
   const dashboardStats = selectDashboardStats(state);
+  const cruxReady = selectCruxReadiness(state);
+  const situationAdvisory = selectSituationSuggestion(state);
 
   return (
     <div className="flex h-screen w-full bg-[#0a0a0a] overflow-hidden text-sm">
       <Sidebar 
-        currentView={view} 
-        setView={setView} 
+        currentView={view === 'settings' ? 'context' : view} 
+        setView={(v) => setView(v === 'context' ? 'settings' : v)} 
         stats={{ 
           ...dashboardStats,
           pcOB: state.pc.obsession,
@@ -105,50 +141,44 @@ const AppContent: React.FC = () => {
         anchorCount={state.anchors?.length || 0} 
         npcCount={Object.keys(state.npcs || {}).length} 
         sitCount={state.situations?.length || 0}
+        cruxReady={cruxReady}
+        situationAdvisory={situationAdvisory}
+        onTriggerCrux={handleTriggerCrux}
+        onDrawSituation={handleDrawSituation}
         onExport={() => {}} 
         onImport={() => {}} 
         onClear={handleClearSession}
       />
-      <main className="flex-1 flex flex-col relative">
-        {view === 'context' && (
-          <ContextEditor 
-            onSave={async (c) => { 
-              setIsCaching(true); 
-              await gemini.setSystemInstruction(c); 
-              setSystemContext(c); 
-              setIsCaching(false); 
-              setView('chat'); 
-            }} 
-            isCaching={isCaching} 
-            initialValue={systemContext} 
+      
+      <main className="flex-1 flex overflow-hidden">
+        {view === 'settings' && (
+          <SettingsPanel 
+            currentPrompt={systemContext}
+            isCaching={isCaching}
+            onPromptUpdate={async (c) => {
+              setIsCaching(true);
+              addLog('info', 'app', 'Caching new protocol set...');
+              await gemini.setSystemInstruction(c);
+              setSystemContext(c);
+              setIsCaching(false);
+              addLog('info', 'app', 'Engine ready. System context initialized.');
+              setView('chat');
+            }}
           />
         )}
+
         {view === 'chat' && (
-          <ChatInterface 
-            messages={messages} 
-            onSend={(txt) => handleSendMessage(txt, false)} 
-            isProcessing={isProcessing} 
-            contextLoaded={!!systemContext} 
-          />
+          <div className="flex flex-1 overflow-hidden">
+            <SimulationTerminal 
+              messages={messages} 
+              onSend={handleSendMessage} 
+              isProcessing={isProcessing} 
+              contextLoaded={!!systemContext} 
+            />
+            <SystemLog entries={logEntries} />
+          </div>
         )}
-        {view === 'meta' && (
-          <MetaTerminal 
-            messages={messages} 
-            onSend={(txt) => handleSendMessage(txt, true)} 
-            onUpdateKernel={async (c) => { 
-              gemini.setSystemInstruction(c); 
-              setSystemContext(c); 
-            }} 
-            onAnalyzeDrift={async () => {}} 
-            onCommitIntervention={() => {}} 
-            interventions={interventions} 
-            systemContext={systemContext} 
-            isProcessing={isProcessing} 
-            isCaching={isCaching} 
-            isAnalyzing={isAnalyzing} 
-            contextLoaded={!!systemContext} 
-          />
-        )}
+
         {(view === 'reb' || view === 'pc' || view === 'world' || view === 'npcs' || view === 'situations' || view === 'anchors') && (
           <Dashboard 
             view={view} 

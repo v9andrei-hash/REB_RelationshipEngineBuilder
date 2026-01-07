@@ -1,3 +1,4 @@
+
 import { Dispatch } from 'react';
 import { SimulationAction } from '../state/actions';
 import { SimulationState } from '../types/simulation';
@@ -58,7 +59,6 @@ export function processLLMResponse(
   }
 
   // 3. Process CHAR (Profile Hydration)
-  // <!-- CHAR|PC|N:Pepe LePeu|O:Origin|W:Wound|T:Temp|D:Drive|WANT:Want|NEED:Need|S:Skills -->
   const charMatches = Array.from(responseText.matchAll(/<!-- CHAR\|(PC|REB)\|(.*?) -->/g));
   charMatches.forEach(m => {
     const role = m[1] as 'PC' | 'REB';
@@ -78,7 +78,21 @@ export function processLLMResponse(
     dispatch({ type: 'PROFILE_UPDATED', role, data });
   });
 
-  // 4. Process PRESSURE
+  // 4. Process SITUATION
+  const situationMatch = responseText.match(/<!-- SITUATION\|(.*?)\|(.*?) -->/);
+  if (situationMatch) {
+    dispatch({
+      type: 'SITUATION_DRAWN',
+      situation: {
+        id: `sit-${Date.now()}`,
+        label: situationMatch[1],
+        triggerCondition: situationMatch[2],
+        status: 'TRIGGERED'
+      }
+    });
+  }
+
+  // 5. Process PRESSURE
   const pressureMatch = responseText.match(/<!-- PRESSURE\|(.*?)\|(.*?) -->/);
   if (pressureMatch) {
     dispatch({
@@ -88,7 +102,7 @@ export function processLLMResponse(
     });
   }
 
-  // 5. Process CRUX Moments
+  // 6. Process CRUX Moments
   const cruxMatch = responseText.match(/<!-- CRUX\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/);
   if (cruxMatch) {
     const [_, tierRaw, desc, want, need] = cruxMatch;
@@ -104,7 +118,7 @@ export function processLLMResponse(
     });
   }
 
-  // 6. Process Configuration Shifts
+  // 7. Process Configuration Shifts
   const configMatch = responseText.match(/<!-- CONFIG\|(.*?)\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/);
   if (configMatch) {
     const [_, configType, pcWant, pcNeed, rebWant, rebNeed] = configMatch;
@@ -139,7 +153,7 @@ export function processLLMResponse(
     }
   }
 
-  // 7. Process NPC Updates
+  // 8. Process NPC Updates
   const npcMatches = Array.from(responseText.matchAll(/<!-- NPC\|(.*?):(.*?)\|(.*?) -->/g));
   npcMatches.forEach(m => {
     dispatch({

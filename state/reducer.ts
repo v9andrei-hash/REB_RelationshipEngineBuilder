@@ -1,3 +1,4 @@
+
 import { SimulationState, NPCState, SituationState, PressureSource } from '../types/simulation';
 import { SimulationAction } from './actions';
 import { selectAlignmentState, selectAwarenessState } from './selectors';
@@ -67,7 +68,7 @@ export function simulationReducer(
         },
         pc: updateArc('pc'),
         reb: updateArc('reb'),
-        turnCounter: d.trn_current,
+        turnCounter: state.turnCounter + 1, // Incremented locally now TRN is removed from telemetry
         densityTotal: state.densityTotal + Math.abs(d.vt_mag)
       };
     }

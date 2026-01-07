@@ -31,6 +31,30 @@ export const selectBondQuadrant = (state: SimulationState): 'Q1' | 'Q2' | 'Q3' |
   return 'Q4';
 };
 
+export const selectCruxReadiness = (state: SimulationState): boolean => {
+  // CRUX is forbidden in Act 1
+  if (state.act.actNumber === 1) return false;
+
+  const pc = state.pc;
+  const reb = state.reb;
+
+  return (
+    Math.abs(pc.alignment) > 70 ||
+    pc.awareness > 60 ||
+    pc.obsession > 70 ||
+    Math.abs(pc.alignment - reb.alignment) > 80
+  );
+};
+
+export const selectSituationSuggestion = (state: SimulationState): string => {
+  const adr = Math.abs(state.bondMatrix.adrenaline);
+  const oxy = Math.abs(state.bondMatrix.oxytocin);
+  
+  if (adr > oxy + 50) return "Somatic/Psychic Pressure Optimal";
+  if (oxy > adr + 50) return "Social/Proximity Pressure Optimal";
+  return "Environmental Pressure Recommended";
+};
+
 export interface DashboardStats {
   adr: number;
   oxy: number;

@@ -1,5 +1,6 @@
+
 import React, { useRef } from 'react';
-import { Layout, MessageSquare, Database, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Terminal as TerminalIcon, Loader2, Clock, Map } from 'lucide-react';
+import { Layout, MessageSquare, Settings as SettingsIcon, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Loader2, Clock, Map, Flame, Layers as SituationIcon } from 'lucide-react';
 
 interface SidebarProps {
   currentView: 'chat' | 'context' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations' | 'meta';
@@ -9,12 +10,19 @@ interface SidebarProps {
   npcCount: number;
   sitCount: number;
   isExporting?: boolean;
+  cruxReady?: boolean;
+  situationAdvisory?: string;
+  onTriggerCrux: () => void;
+  onDrawSituation: () => void;
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClear: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, stats, anchorCount, npcCount, sitCount, isExporting, onExport, onImport, onClear }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  currentView, setView, stats, anchorCount, npcCount, sitCount, isExporting, 
+  cruxReady, situationAdvisory, onTriggerCrux, onDrawSituation, onExport, onImport, onClear 
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const NavItem = ({ id, icon: Icon, label, badge }: { id: any, icon: any, label: string, badge?: number }) => (
@@ -50,9 +58,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, stats, anchorCo
         <div>
           <h3 className="text-[9px] text-gray-600 uppercase font-black tracking-widest px-4 mb-3">System</h3>
           <nav className="space-y-1">
-            <NavItem id="context" icon={Database} label="Protocol Cache" />
+            <NavItem id="context" icon={SettingsIcon} label="Settings" />
             <NavItem id="chat" icon={MessageSquare} label="Simulation Terminal" />
-            <NavItem id="meta" icon={TerminalIcon} label="Meta Terminal" />
           </nav>
         </div>
 
@@ -66,6 +73,43 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, stats, anchorCo
             <NavItem id="situations" icon={Layers} label="Situation Deck" badge={sitCount} />
             <NavItem id="anchors" icon={History} label="Narrative Anchors" badge={anchorCount} />
           </nav>
+        </div>
+
+        <div>
+          <h3 className="text-[9px] text-gray-600 uppercase font-black tracking-widest px-4 mb-3">Governance</h3>
+          <div className="space-y-2">
+            <button 
+              onClick={onTriggerCrux}
+              title={cruxReady ? "Prime psychological threshold reached" : "Manual override for CRUX trigger"}
+              className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-lg transition-all duration-300 group border ${
+                cruxReady 
+                  ? 'bg-orange-600/20 border-orange-500/50 text-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.15)] animate-pulse' 
+                  : 'text-gray-500 border-transparent hover:bg-white/5 hover:text-gray-300'
+              }`}
+            >
+              <Flame size={18} className={cruxReady ? 'text-orange-500 animate-bounce' : 'text-gray-600'} />
+              <span className="font-black text-[10px] uppercase tracking-wider">
+                {cruxReady ? 'Force CRUX Gate' : 'Trigger CRUX'}
+              </span>
+            </button>
+
+            <button 
+              onClick={onDrawSituation}
+              className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg transition-all duration-300 group border border-transparent text-gray-500 hover:bg-cyan-600/10 hover:border-cyan-500/30 hover:text-cyan-400"
+            >
+              <SituationIcon size={18} className="text-gray-600 group-hover:text-cyan-500" />
+              <span className="font-black text-[10px] uppercase tracking-wider">Draw Situation</span>
+            </button>
+
+            {situationAdvisory && (
+              <div className="px-4 py-1.5 bg-blue-500/5 rounded border border-blue-500/10 mt-1">
+                <span className="text-[8px] text-blue-400/60 font-black uppercase tracking-widest flex items-center gap-1">
+                  <Zap size={8} /> Advisory:
+                </span>
+                <span className="text-[9px] text-blue-300/80 font-bold uppercase italic leading-none">{situationAdvisory}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div>
