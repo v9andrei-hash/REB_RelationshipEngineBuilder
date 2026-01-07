@@ -1,4 +1,3 @@
-
 import { Dispatch } from 'react';
 import { SimulationAction } from '../state/actions';
 import { SimulationState } from '../types/simulation';
@@ -41,7 +40,7 @@ export function processLLMResponse(
   const validation = validateDelta(responseText, currentState);
   if (validation.valid === false) {
     errors.push(...validation.errors.map(e => e.message));
-  } else if (validation.valid === true) {
+  } else if (validation.valid === true && validation.delta !== null) {
     dispatch({ 
       type: 'APPLY_DELTA', 
       payload: validation.delta, 
@@ -49,7 +48,47 @@ export function processLLMResponse(
     });
   }
 
-  // 2. Process CRUX Moments
+  // 2. Process SESSION (World Context)
+  const sessionMatch = responseText.match(/<!-- SESSION\|(.*?)\|(.*?) -->/);
+  if (sessionMatch) {
+    dispatch({
+      type: 'WORLD_SET',
+      payload: { era: sessionMatch[1], genre: sessionMatch[2] }
+    });
+  }
+
+  // 3. Process CHAR (Profile Hydration)
+  // <!-- CHAR|PC|N:Pepe LePeu|O:Origin|W:Wound|T:Temp|D:Drive|WANT:Want|NEED:Need|S:Skills -->
+  const charMatches = Array.from(responseText.matchAll(/<!-- CHAR\|(PC|REB)\|(.*?) -->/g));
+  charMatches.forEach(m => {
+    const role = m[1] as 'PC' | 'REB';
+    const pairs = m[2].split('|');
+    const data: any = {};
+    pairs.forEach(p => {
+      const [key, val] = p.split(':');
+      if (key === 'N') data.name = val;
+      if (key === 'O') data.origin = val;
+      if (key === 'W') data.wound = val;
+      if (key === 'T') data.temperament = val;
+      if (key === 'D') data.drive = val;
+      if (key === 'WANT') data.want = val;
+      if (key === 'NEED') data.need = val;
+      if (key === 'S') data.skills = val.split(',').filter(Boolean);
+    });
+    dispatch({ type: 'PROFILE_UPDATED', role, data });
+  });
+
+  // 4. Process PRESSURE
+  const pressureMatch = responseText.match(/<!-- PRESSURE\|(.*?)\|(.*?) -->/);
+  if (pressureMatch) {
+    dispatch({
+      type: 'PRESSURE_ADDED',
+      tier: normalizeTier(pressureMatch[1]),
+      source: pressureMatch[2]
+    });
+  }
+
+  // 5. Process CRUX Moments
   const cruxMatch = responseText.match(/<!-- CRUX\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/);
   if (cruxMatch) {
     const [_, tierRaw, desc, want, need] = cruxMatch;
@@ -65,7 +104,7 @@ export function processLLMResponse(
     });
   }
 
-  // 3. Process Configuration Shifts
+  // 6. Process Configuration Shifts
   const configMatch = responseText.match(/<!-- CONFIG\|(.*?)\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/);
   if (configMatch) {
     const [_, configType, pcWant, pcNeed, rebWant, rebNeed] = configMatch;
@@ -100,7 +139,7 @@ export function processLLMResponse(
     }
   }
 
-  // 4. Process NPC Updates
+  // 7. Process NPC Updates
   const npcMatches = Array.from(responseText.matchAll(/<!-- NPC\|(.*?):(.*?)\|(.*?) -->/g));
   npcMatches.forEach(m => {
     dispatch({

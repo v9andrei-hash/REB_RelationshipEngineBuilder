@@ -1,9 +1,8 @@
-
 import React, { useRef } from 'react';
-import { Layout, MessageSquare, Database, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Terminal as TerminalIcon, Loader2, Clock } from 'lucide-react';
+import { Layout, MessageSquare, Database, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Terminal as TerminalIcon, Loader2, Clock, Map } from 'lucide-react';
 
 interface SidebarProps {
-  currentView: 'chat' | 'context' | 'reb' | 'pc' | 'anchors' | 'npcs' | 'situations' | 'meta';
+  currentView: 'chat' | 'context' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations' | 'meta';
   setView: (view: any) => void;
   stats: any;
   anchorCount: number;
@@ -60,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, stats, anchorCo
         <div>
           <h3 className="text-[9px] text-gray-600 uppercase font-black tracking-widest px-4 mb-3">Telemetry</h3>
           <nav className="space-y-1">
+            <NavItem id="world" icon={Map} label="Stage Configuration" />
             <NavItem id="reb" icon={Radio} label="REB Surveillance" />
             <NavItem id="pc" icon={Target} label="PC Psychology" />
             <NavItem id="npcs" icon={Users} label="NPC Roster" badge={npcCount} />
@@ -132,8 +132,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, stats, anchorCo
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <span className="text-[9px] text-gray-500 uppercase font-black">Force Balance</span>
-              <span className={`text-[10px] font-black uppercase ${(stats.pcOB || 0) > Math.abs((stats.entropy || -50) / 4) ? 'text-orange-500' : 'text-blue-500'}`}>
-                {(stats.pcOB || 0) > Math.abs((stats.entropy || -50) / 4) ? 'PC Leading' : 'REB Restrained'}
+              <span className={`text-[10px] font-black uppercase ${(stats.pcOB || 0) > 50 ? 'text-orange-500' : 'text-blue-500'}`}>
+                {(stats.pcOB || 0) > 50 ? 'PC Leading' : 'REB Restrained'}
               </span>
             </div>
             <div className="h-1.5 w-full bg-white/5 rounded-full flex overflow-hidden border border-white/5">

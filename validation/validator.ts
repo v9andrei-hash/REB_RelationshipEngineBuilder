@@ -5,7 +5,7 @@ import { ValidationError } from './errors';
 import { detectThresholds, ThresholdEvent } from './thresholds';
 
 export type ValidationResult = 
-  | { valid: true; delta: RawDelta; thresholdEvents: ThresholdEvent[] }
+  | { valid: true; delta: RawDelta | null; thresholdEvents: ThresholdEvent[] }
   | { valid: false; errors: ValidationError[] };
 
 export function validateDelta(
@@ -15,13 +15,17 @@ export function validateDelta(
   // 1. Parse
   const parseResult = parseDelta(rawResponse);
   
-  // Use explicit literal comparison to fix narrowing issues in some TypeScript environments
   if (parseResult.success === false) {
     return { valid: false, errors: [parseResult.error] };
   }
 
-  // At this point parseResult is narrowed to { success: true; data: RawDelta }
   const delta = parseResult.data;
+  
+  // If no Delta tag was found, it's technically "valid" but has no physics impact
+  if (delta === null) {
+    return { valid: true, delta: null, thresholdEvents: [] };
+  }
+
   const errors: ValidationError[] = [];
 
   // 2. Check Physics Rules
@@ -67,7 +71,7 @@ export function validateDelta(
   const pcOb = currentState.pc.obsession + delta.pc_ob;
   const rebOb = currentState.reb.obsession + delta.reb_ob;
   if (pcOb > 70 && rebOb > 70) {
-    thresholdEvents.push({ type: 'DUAL_PEAK', character: 'PC', previousValue: 0, newValue: 0 }); // character field is dummy here
+    thresholdEvents.push({ type: 'DUAL_PEAK', character: 'PC', previousValue: 0, newValue: 0 }); 
   }
 
   return {

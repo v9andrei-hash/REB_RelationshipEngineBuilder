@@ -82,11 +82,21 @@ const MetaTerminal: React.FC<MetaTerminalProps> = ({
                 </div>
                 <div className={`whitespace-pre-wrap ${msg.role === 'user' ? 'text-blue-200' : 'text-green-400 font-bold'}`}>
                   {msg.hiddenStats ? (
-                    <div className="flex flex-col gap-1">
-                      <div className="text-white opacity-90">{msg.hiddenStats}</div>
-                      {msg.content && <div className="text-[8px] text-gray-500 italic mt-1 font-normal opacity-50 select-none border-t border-white/5 pt-1">Prose content suppressed for terminal fidelity.</div>}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 text-[8px] text-blue-400 font-black uppercase tracking-tighter bg-blue-500/10 px-2 py-0.5 rounded w-fit">
+                        <Activity size={10} /> Extracted Telemetry
+                      </div>
+                      <div className="text-white opacity-100 font-mono text-[10px] bg-white/5 p-2 rounded border border-white/5">{msg.hiddenStats}</div>
+                      {msg.content && <div className="text-[8px] text-gray-600 italic mt-1 font-normal opacity-50 select-none border-t border-white/5 pt-1">Narrative prose suppressed in terminal view.</div>}
                     </div>
-                  ) : msg.content}
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div>{msg.content}</div>
+                      {msg.role === 'model' && (
+                        <div className="text-[8px] text-red-500/50 italic border-t border-red-500/10 pt-1">No telemetry tags detected in transmission.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

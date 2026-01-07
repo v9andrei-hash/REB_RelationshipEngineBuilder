@@ -1,4 +1,3 @@
-
 import { SimulationState } from '../types/simulation';
 import { createAdrenaline, createOxytocin, createFavor, createEntropy } from '../types/bondMatrix';
 
@@ -12,16 +11,24 @@ export const createInitialState = (): SimulationState => ({
     entropy: createEntropy(-50),
   },
   configuration: { type: 'ASYMMETRIC', tensions: ['Initial Calibration'], description: "Nuanced partial alignments" },
+  world: {
+    era: "Uninitialized",
+    genre: "Unknown",
+    location: "Void"
+  },
   pc: {
+    name: "Unknown",
     alignment: 0,
     alignmentState: { tag: 'LIMINAL', trajectory: 'VOLATILE' },
     awareness: 15,
     awarenessState: { tag: 'BLIND', canChooseNeed: false },
     obsession: 30,
     want: "Stability",
-    need: "Growth"
+    need: "Growth",
+    skills: []
   },
   reb: {
+    name: "Entity",
     alignment: 0,
     alignmentState: { tag: 'LIMINAL', trajectory: 'VOLATILE' },
     awareness: 20,

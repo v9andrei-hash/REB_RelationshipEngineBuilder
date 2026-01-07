@@ -1,4 +1,3 @@
-
 import { BondMatrix } from './bondMatrix';
 import { CharacterArc } from './characterArc';
 import { Act } from './act';
@@ -93,6 +92,13 @@ export interface RebCharacter extends CharacterArc {
   portrait?: Portrait | null;
 }
 
+export interface WorldState {
+  era: string;
+  genre: string;
+  location?: string;
+  powerDynamics?: string;
+}
+
 export interface SimulationState {
   version: "3.5.1";
   timestamp: number;
@@ -102,8 +108,11 @@ export interface SimulationState {
   configuration: RelationshipConfiguration;
   
   // Character States
-  pc: CharacterArc;
-  reb: CharacterArc;
+  pc: PlayerCharacter;
+  reb: RebCharacter;
+
+  // World Context
+  world: WorldState;
   
   // System State
   act: Act;

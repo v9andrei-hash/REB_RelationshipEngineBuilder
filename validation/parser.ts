@@ -1,3 +1,4 @@
+
 import { ValidationError } from './errors';
 
 export interface RawDelta {
@@ -18,18 +19,23 @@ export interface RawDelta {
 }
 
 export type ParseResult<T> = 
-  | { success: true; data: T } 
+  | { success: true; data: T | null } 
   | { success: false; error: ValidationError };
 
 export function parseDelta(raw: string): ParseResult<RawDelta> {
+  // First, check if a Delta tag is even attempted (looking for the Δ symbol)
+  if (!raw.includes('Δ')) {
+    return { success: true, data: null };
+  }
+
   /**
-   * More robust regex allowing for:
+   * Robust regex allowing for:
    * - Optional colons after labels (Ar: vs Ar)
    * - Varying whitespace between labels and values
    * - Case insensitivity
-   * - Flexible TRN and VT formatting
+   * - Flexible TRN and VT formatting (handles VT:None or VT:LH+5)
    */
-  const deltaRegex = /<!--\s*Δ\s*Ar:?\s*([+-]?\d+)\s*Ox:?\s*([+-]?\d+)\s*Fv:?\s*([+-]?\d+)\s*En:?\s*([+-]?\d+)\s*PC_AL:?\s*([+-]?\d+)\s*PC_AW:?\s*([+-]?\d+)\s*PC_OB:?\s*([+-]?\d+)\s*REB_AL:?\s*([+-]?\d+)\s*REB_AW:?\s*([+-]?\d+)\s*REB_OB:?\s*([+-]?\d+)\s*TRN:?\s*(\d+)\s*\/\s*(\d+)\s*VT:?\s*([A-Z]{2})\s*([+-]?\d+)\s*-->/i;
+  const deltaRegex = /<!--\s*Δ\s*Ar:?\s*([+-]?\d+)\s*Ox:?\s*([+-]?\d+)\s*Fv:?\s*([+-]?\d+)\s*En:?\s*([+-]?\d+)\s*PC_AL:?\s*([+-]?\d+)\s*PC_AW:?\s*([+-]?\d+)\s*PC_OB:?\s*([+-]?\d+)\s*REB_AL:?\s*([+-]?\d+)\s*REB_AW:?\s*([+-]?\d+)\s*REB_OB:?\s*([+-]?\d+)\s*TRN:?\s*(\d+)\s*\/\s*(\d+)\s*VT:?\s*([A-Z]+|None)\s*([+-]?\d+)?\s*-->/i;
   
   const match = raw.match(deltaRegex);
   
@@ -56,7 +62,7 @@ export function parseDelta(raw: string): ParseResult<RawDelta> {
       trn_current: parseInt(match[11]),
       trn_max: parseInt(match[12]),
       vt_code: match[13].toUpperCase(),
-      vt_mag: parseInt(match[14])
+      vt_mag: match[14] ? parseInt(match[14]) : 0 // Default to 0 if magnitude is missing
     }
   };
 }

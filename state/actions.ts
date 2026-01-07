@@ -1,10 +1,9 @@
-
 import { RawDelta } from '../validation/parser';
 import { ThresholdEvent } from '../validation/thresholds';
 import { ConflictTier, CruxDefinition } from '../types/conflict';
 import { RelationshipConfiguration } from '../types/configuration';
 import { Situation } from '../types';
-import { SimulationState } from '../types/simulation';
+import { SimulationState, WorldState, PlayerCharacter, RebCharacter } from '../types/simulation';
 
 export type SimulationAction =
   | { type: 'INITIALIZE'; payload: SimulationState }
@@ -20,4 +19,6 @@ export type SimulationAction =
   | { type: 'NPC_STATUS_CHANGED'; npcName: string; status: 'ACTING' | 'WATCHING' | 'DORMANT' }
   | { type: 'PRESSURE_ADDED'; tier: ConflictTier; source: string }
   | { type: 'PRESSURE_RESOLVED'; source: string }
-  | { type: 'UPDATE_USAGE'; inputTokens: number; outputTokens: number };
+  | { type: 'UPDATE_USAGE'; inputTokens: number; outputTokens: number }
+  | { type: 'WORLD_SET'; payload: WorldState }
+  | { type: 'PROFILE_UPDATED'; role: 'PC' | 'REB'; data: Partial<PlayerCharacter | RebCharacter> };

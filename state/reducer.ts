@@ -17,11 +17,20 @@ export function simulationReducer(
 ): ExtendedSimulationState {
   switch (action.type) {
     case 'INITIALIZE':
-      // Ensure we use the NEW payload data for a fresh start, not the old state's history
       return {
         ...(action.payload as ExtendedSimulationState),
         cruxHistory: (action.payload as any).cruxHistory || [],
         pendingCruxPressure: (action.payload as any).pendingCruxPressure || false
+      };
+
+    case 'WORLD_SET':
+      return { ...state, world: action.payload };
+
+    case 'PROFILE_UPDATED':
+      const roleKey = action.role.toLowerCase() as 'pc' | 'reb';
+      return {
+        ...state,
+        [roleKey]: { ...state[roleKey], ...action.data }
       };
 
     case 'APPLY_DELTA': {
@@ -78,7 +87,6 @@ export function simulationReducer(
       
       const effects = calculateCruxEffects(action.path, state.pc.awareness, state.cruxHistory.length);
       
-      // PC is the agent of choice for CRUX resolution
       const pcAlignment = Math.min(100, Math.max(-100, state.pc.alignment + amplifyChange(effects.alignmentDelta, state.pc.obsession)));
       const pcAwareness = Math.min(100, Math.max(0, state.pc.awareness + effects.awarenessDelta));
       const pcObsession = Math.min(100, Math.max(0, state.pc.obsession + effects.obsessionDelta));
@@ -216,7 +224,7 @@ export function simulationReducer(
     case 'UPDATE_USAGE':
       return {
         ...state,
-        inputTokens: state.inputTokens + action.inputTokens,
+        inputTokens: action.inputTokens,
         outputTokens: state.outputTokens + action.outputTokens
       };
 

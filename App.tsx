@@ -13,7 +13,7 @@ import { selectDashboardStats } from './state/selectors';
 import { createInitialState } from './state/initial';
 
 const AppContent: React.FC = () => {
-  const [view, setView] = useState<'chat' | 'context' | 'reb' | 'pc' | 'anchors' | 'npcs' | 'situations' | 'meta'>('context');
+  const [view, setView] = useState<'chat' | 'context' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations' | 'meta'>('context');
   const [messages, setMessages] = useState<Message[]>([]);
   const [systemContext, setSystemContext] = useState<string>('');
   const [isCaching, setIsCaching] = useState(false);
@@ -44,7 +44,6 @@ const AppContent: React.FC = () => {
         const chunkText = typeof c === 'string' ? c : (c.text || '');
         fullResponse += chunkText;
         
-        // usageMetadata usually arrives in the last chunk of the stream
         if (c.usageMetadata) {
           usageMetadata = c.usageMetadata;
         }
@@ -55,10 +54,8 @@ const AppContent: React.FC = () => {
         });
       }
 
-      // Physics sync via simulation engine
       const { cleanText, errors, extractedTags } = applyRawResponse(fullResponse);
       
-      // Update token usage if captured from the stream
       if (usageMetadata) {
         dispatch({
           type: 'UPDATE_USAGE',
@@ -72,7 +69,7 @@ const AppContent: React.FC = () => {
         return [...prev.slice(0, -1), { 
           ...last, 
           content: cleanText,
-          hiddenStats: extractedTags.join('\n'), // Pass tags to MetaTerminal for visibility
+          hiddenStats: extractedTags.join('\n'),
           compliance: { isPassed: errors.length === 0, violations: errors }
         }];
       });
@@ -84,15 +81,11 @@ const AppContent: React.FC = () => {
   };
 
   const handleClearSession = () => {
-    // Using window.confirm for explicit browser scope
     if (window.confirm("Initiate Hard Reset? All narrative memory and engine state will be purged.")) {
       setMessages([]);
-      // Reset engine state
       dispatch({ type: 'INITIALIZE', payload: createInitialState() });
-      // Clear Gemini service internal state
       gemini.setSystemInstruction('');
       setSystemContext('');
-      // Route back to initialization
       setView('context');
     }
   };
@@ -106,8 +99,7 @@ const AppContent: React.FC = () => {
         setView={setView} 
         stats={{ 
           ...dashboardStats,
-          pcObsession: state.pc.obsession,
-          // Use inputTokens + outputTokens as the real API utilization metric
+          pcOB: state.pc.obsession,
           tokens: (dashboardStats.inputTokens || 0) + (dashboardStats.outputTokens || 0)
         }} 
         anchorCount={state.anchors?.length || 0} 
@@ -157,7 +149,7 @@ const AppContent: React.FC = () => {
             contextLoaded={!!systemContext} 
           />
         )}
-        {(view === 'reb' || view === 'pc') && (
+        {(view === 'reb' || view === 'pc' || view === 'world' || view === 'npcs' || view === 'situations' || view === 'anchors') && (
           <Dashboard 
             view={view} 
             stats={dashboardStats} 
@@ -166,8 +158,11 @@ const AppContent: React.FC = () => {
             situations={state.situations || []} 
             inventory={[]} 
             sceneHistory={[]} 
-            pc={null} 
-            reb={null} 
+            pc={state.pc} 
+            reb={state.reb}
+            world={state.world}
+            pressures={state.pressures}
+            configuration={state.configuration.type}
           />
         )}
       </main>
