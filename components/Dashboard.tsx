@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
 import { Zap, TrendingUp, Shield, Thermometer, Activity, Users, Layers, Timer, Milestone, Brain, Flame, ArrowUpRight, Crosshair, Package, Archive, Box, Star, Eye, Target, Link, Map, Film, ShieldAlert, Clock } from 'lucide-react';
@@ -30,12 +31,12 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
 
   const tensionPoint = [
-    { x: stats.adr, y: stats.oxy, name: 'Current State' }
+    { x: stats.adr || 0, y: stats.oxy || 0, name: 'Current State' }
   ];
 
-  const shadowLeakRisk = Math.abs(stats.adr) > 350 || Math.abs(stats.oxy) > 400 ? 'CRITICAL' : (Math.abs(stats.adr) > 250 || Math.abs(stats.oxy) > 300 ? 'HIGH' : 'STABLE');
+  const shadowLeakRisk = Math.abs(stats.adr || 0) > 350 || Math.abs(stats.oxy || 0) > 400 ? 'CRITICAL' : (Math.abs(stats.adr || 0) > 250 || Math.abs(stats.oxy || 0) > 300 ? 'HIGH' : 'STABLE');
 
-  const ArcTriad = ({ al, aw, ob, want, need, role, origin, wound, drive }: { al: number, aw: number, ob: number, want?: string, need?: string, role: string, origin?: string, wound?: string, drive?: string }) => {
+  const ArcTriad = ({ al = 0, aw = 0, ob = 0, want, need, role, origin, wound, drive }: { al: number, aw: number, ob: number, want?: string, need?: string, role: string, origin?: string, wound?: string, drive?: string }) => {
     const getAwarenessLabel = (val: number) => {
       if (val < 20) return 'BLIND';
       if (val < 40) return 'DEFENDED';
@@ -71,8 +72,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between text-[10px] font-black uppercase">
-              <span className="text-blue-400">Want: {want || 'Unknown'}</span>
-              <span className="text-orange-400">Need: {need || 'Unknown'}</span>
+              <span className="text-blue-400">Want: {want || 'Neutral'}</span>
+              <span className="text-orange-400">Need: {need || 'Potential'}</span>
             </div>
             <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden relative border border-white/5">
               <div 
@@ -122,13 +123,13 @@ const Dashboard: React.FC<DashboardProps> = ({
             isGenerating={generatingPortraits.includes(reb?.name || "REB")}
           />
           <div>
-            <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase">{reb?.name || "REB Surveillance"}</h2>
+            <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase">{reb?.name || "REB SURVEILLANCE"}</h2>
             <div className="mt-4 flex gap-3">
               <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-[10px] text-blue-400 font-black uppercase italic">
-                {reb?.temperament || 'Unknown Temperament'}
+                {reb?.temperament || 'UNDEFINED PROTOCOL'}
               </span>
               <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-black uppercase italic">
-                {reb?.origin || 'Unknown Origin'}
+                {reb?.origin || 'VOID ORIGIN'}
               </span>
             </div>
           </div>
@@ -179,19 +180,19 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
            <span className="text-[9px] text-gray-500 uppercase font-black block mb-2">Entropy Flux</span>
-           <div className="text-2xl font-black text-purple-400 italic mono">{stats.entropy}</div>
+           <div className="text-2xl font-black text-purple-400 italic mono">{stats.entropy || 0}</div>
         </div>
         <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
            <span className="text-[9px] text-gray-500 uppercase font-black block mb-2">Engine Favor</span>
-           <div className="text-2xl font-black text-cyan-400 italic mono">{stats.favor}</div>
+           <div className="text-2xl font-black text-cyan-400 italic mono">{stats.favor || 0}</div>
         </div>
         <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
            <span className="text-[9px] text-gray-500 uppercase font-black block mb-2">Adrenaline</span>
-           <div className="text-2xl font-black text-blue-400 italic mono">{stats.adr}</div>
+           <div className="text-2xl font-black text-blue-400 italic mono">{stats.adr || 0}</div>
         </div>
         <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
            <span className="text-[9px] text-gray-500 uppercase font-black block mb-2">Oxytocin</span>
-           <div className="text-2xl font-black text-pink-400 italic mono">{stats.oxy}</div>
+           <div className="text-2xl font-black text-pink-400 italic mono">{stats.oxy || 0}</div>
         </div>
       </div>
     </div>
@@ -210,13 +211,17 @@ const Dashboard: React.FC<DashboardProps> = ({
           isGenerating={generatingPortraits.includes(pc?.name || "PC")}
         />
         <div className="flex-1">
-          <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase">{pc?.name || "PC Psychology"}</h2>
+          <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase">{pc?.name || "PC PSYCHOLOGY"}</h2>
           <div className="mt-4 flex flex-wrap gap-3">
-             {pc?.skills?.map((skill, i) => (
+             {(pc?.skills || []).length > 0 ? pc?.skills?.map((skill, i) => (
                 <span key={i} className="px-3 py-1 bg-orange-500/10 border border-orange-500/20 rounded-full text-[10px] text-orange-400 font-black uppercase italic">
                   {skill}
                 </span>
-             ))}
+             )) : (
+               <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-600 font-black uppercase italic">
+                 NO SKILLS RECORDED
+               </span>
+             )}
           </div>
         </div>
       </div>
@@ -232,7 +237,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <Flame size={14} className="text-red-500" /> Obsession Amplifier
                 </span>
                 <span className="text-lg font-black text-white italic mono">
-                  {(1 + stats.pcOB / 100).toFixed(2)}x
+                  {(1 + (stats.pcOB || 0) / 100).toFixed(2)}x
                 </span>
               </div>
               <p className="text-[9px] text-gray-600">
@@ -246,9 +251,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <Target size={14} className="text-amber-400" /> CRUX Pattern
                 </span>
                 <span className={`text-sm font-black uppercase ${
-                  stats.pcAL < -20 ? 'text-blue-400' : stats.pcAL > 20 ? 'text-orange-400' : 'text-gray-400'
+                  (stats.pcAL || 0) < -20 ? 'text-blue-400' : (stats.pcAL || 0) > 20 ? 'text-orange-400' : 'text-gray-400'
                 }`}>
-                  {stats.pcAL < -20 ? 'WANT-PURSUIT' : stats.pcAL > 20 ? 'NEED-APPROACH' : 'LIMINAL'}
+                  {(stats.pcAL || 0) < -20 ? 'WANT-PURSUIT' : (stats.pcAL || 0) > 20 ? 'NEED-APPROACH' : 'LIMINAL'}
                 </span>
               </div>
             </div>
@@ -273,11 +278,11 @@ const Dashboard: React.FC<DashboardProps> = ({
            <div className="grid grid-cols-2 gap-4">
               <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
                  <span className="text-[10px] text-gray-600 font-black uppercase block mb-2 flex items-center gap-2"><Clock size={12} /> Narrative Era</span>
-                 <span className="text-xl font-black text-white italic uppercase tracking-tight">{world?.era || "Unset"}</span>
+                 <span className="text-xl font-black text-white italic uppercase tracking-tight">{world?.era || "UNINITIALIZED"}</span>
               </div>
               <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
                  <span className="text-[10px] text-gray-600 font-black uppercase block mb-2 flex items-center gap-2"><Film size={12} /> Narrative Genre</span>
-                 <span className="text-xl font-black text-white italic uppercase tracking-tight">{world?.genre || "Unset"}</span>
+                 <span className="text-xl font-black text-white italic uppercase tracking-tight">{world?.genre || "UNKNOWN"}</span>
               </div>
            </div>
         </div>
@@ -351,14 +356,19 @@ const Dashboard: React.FC<DashboardProps> = ({
         {view === 'world' && renderWorldView()}
         {view === 'npcs' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {npcs.map((npc, idx) => (
-              <div key={idx} className="bg-[#111] border border-white/5 p-8 rounded-[40px] flex items-start gap-6">
+            {npcs.length === 0 ? (
+               <div className="col-span-full h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] opacity-20">
+                 <Users size={48} className="mb-4" />
+                 <p className="text-xs font-black uppercase">No NPCs synchronized</p>
+               </div>
+            ) : npcs.map((npc, idx) => (
+              <div key={idx} className="bg-[#111] border border-white/5 p-8 rounded-[40px] flex items-start gap-6 transition-all hover:bg-white/5">
                 <PortraitDisplay portrait={npc.portrait} name={npc.name} role="NPC" status={npc.status as any} size="lg" />
                 <div className="pt-2">
-                  <h4 className="text-xl font-black text-white italic tracking-tight">{npc.name}</h4>
-                  <p className="text-[10px] text-blue-400 uppercase font-black mb-4">{npc.role}</p>
-                  <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${npc.status === 'ACTING' ? 'bg-red-500/10 text-red-400' : 'bg-gray-500/10 text-gray-500'}`}>
-                    {npc.status}
+                  <h4 className="text-xl font-black text-white italic tracking-tight uppercase truncate max-w-[120px]">{npc.name}</h4>
+                  <p className="text-[10px] text-blue-400 uppercase font-black mb-4">{npc.role || 'GHOST'}</p>
+                  <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${npc.status === 'ACTING' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-gray-500/10 text-gray-500 border border-white/5'}`}>
+                    {npc.status || 'DORMANT'}
                   </span>
                 </div>
               </div>
@@ -367,14 +377,19 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
         {view === 'anchors' && (
           <div className="space-y-6">
-            {anchors.map((anchor) => (
+            {anchors.length === 0 ? (
+               <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] opacity-20">
+                 <Milestone size={48} className="mb-4" />
+                 <p className="text-xs font-black uppercase">No anchor points established</p>
+               </div>
+            ) : anchors.map((anchor) => (
               <div key={anchor.id} className="bg-[#111] border border-white/5 p-10 rounded-[40px] flex gap-10 items-center">
-                <div className="p-6 bg-white/5 rounded-3xl min-w-[100px] text-center">
+                <div className="p-6 bg-white/5 rounded-3xl min-w-[100px] text-center border border-white/5">
                   <span className="text-[10px] text-gray-500 font-black uppercase">W{anchor.week}</span>
                   <div className="text-2xl font-black text-white italic">ACT {anchor.act}</div>
                 </div>
                 <div>
-                  <h4 className="text-2xl font-black text-white uppercase italic mb-2">{anchor.label}</h4>
+                  <h4 className="text-2xl font-black text-white uppercase italic mb-2 tracking-tighter">{anchor.label}</h4>
                   <p className="text-sm text-gray-400 italic">"{anchor.description}"</p>
                 </div>
               </div>
@@ -383,16 +398,25 @@ const Dashboard: React.FC<DashboardProps> = ({
         )}
         {view === 'situations' && (
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             {situations.map((sit) => (
-               <div key={sit.id} className="bg-[#111] border border-white/5 p-8 rounded-[40px]">
+             {situations.length === 0 ? (
+                <div className="col-span-full h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] opacity-20">
+                  <Layers size={48} className="mb-4" />
+                  <p className="text-xs font-black uppercase">Situation deck uninitialized</p>
+                </div>
+             ) : situations.map((sit) => (
+               <div key={sit.id} className="bg-[#111] border border-white/5 p-8 rounded-[40px] relative overflow-hidden group">
                  <div className="flex justify-between items-center mb-4">
-                   <h4 className="text-lg font-black text-white italic">{sit.label}</h4>
-                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${sit.status === 'TRIGGERED' ? 'bg-orange-500/10 text-orange-500' : sit.status === 'RESOLVED' ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-500'}`}>
+                   <h4 className="text-lg font-black text-white italic uppercase tracking-tighter">{sit.label}</h4>
+                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${sit.status === 'TRIGGERED' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : sit.status === 'RESOLVED' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-gray-500/10 text-gray-500 border border-white/5'}`}>
                      {sit.status}
                    </span>
                  </div>
-                 <p className="text-xs text-gray-400 mb-4 tracking-tight uppercase font-bold tracking-widest">Trigger: {sit.triggerCondition}</p>
-                 {sit.resolutionSummary && <p className="text-xs text-blue-300 italic">Result: {sit.resolutionSummary}</p>}
+                 <p className="text-[10px] text-gray-500 mb-4 font-bold uppercase tracking-widest">Trigger: {sit.triggerCondition}</p>
+                 {sit.resolutionSummary && (
+                   <div className="mt-4 pt-4 border-t border-white/5">
+                     <p className="text-xs text-blue-300 italic font-medium leading-relaxed">Result: {sit.resolutionSummary}</p>
+                   </div>
+                 )}
                </div>
              ))}
            </div>

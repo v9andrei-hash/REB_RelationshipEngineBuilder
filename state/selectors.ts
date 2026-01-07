@@ -23,7 +23,7 @@ export const selectCrisis = (state: SimulationState): CrisisState => {
   return getActiveCrisis(state);
 };
 
-export const selectBondQuadrant = (state: SimulationState): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
+export const selectCurrentQuadrant = (state: SimulationState): 'Q1' | 'Q2' | 'Q3' | 'Q4' => {
   const { adrenaline, oxytocin } = state.bondMatrix;
   if (adrenaline >= 0 && oxytocin >= 0) return 'Q1';
   if (adrenaline < 0 && oxytocin >= 0) return 'Q2';
@@ -31,8 +31,9 @@ export const selectBondQuadrant = (state: SimulationState): 'Q1' | 'Q2' | 'Q3' |
   return 'Q4';
 };
 
+export const selectBondQuadrant = selectCurrentQuadrant; // Alias for backward compatibility
+
 export const selectCruxReadiness = (state: SimulationState): boolean => {
-  // CRUX is forbidden in Act 1
   if (state.act.actNumber === 1) return false;
 
   const pc = state.pc;

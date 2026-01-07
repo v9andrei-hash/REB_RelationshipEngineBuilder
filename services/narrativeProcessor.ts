@@ -1,4 +1,3 @@
-
 import { Dispatch } from 'react';
 import { SimulationAction } from '../state/actions';
 import { SimulationState } from '../types/simulation';
@@ -19,20 +18,22 @@ function normalizeTier(raw: string): ConflictTier {
   if (VALID_TIERS.includes(normalized as ConflictTier)) {
     return normalized as ConflictTier;
   }
-  console.warn(`Invalid conflict tier: ${raw}, defaulting to INT`);
   return 'INT';
 }
 
-/**
- * Strips all telemetry tags and dispatches corresponding state changes
- */
+function detectWizardCompletion(response: string): boolean {
+  // Look for CHAR tags which signal wizard completion
+  const hasCharTags = response.includes('<!-- CHAR|PC') && 
+                      response.includes('<!-- CHAR|REB');
+  return hasCharTags;
+}
+
 export function processLLMResponse(
   responseText: string,
   currentState: SimulationState,
   dispatch: Dispatch<SimulationAction>
 ): ProcessResult {
   const errors: string[] = [];
-  let cleanText = responseText;
   
   // Extract all HTML comments as tags for meta visualization
   const extractedTags = (responseText.match(/<!--[\s\S]*?-->/g) || []).map(t => t.trim());
@@ -50,22 +51,26 @@ export function processLLMResponse(
   }
 
   // 2. Process SESSION (World Context)
-  const sessionMatch = responseText.match(/<!-- SESSION\|(.*?)\|(.*?) -->/);
+  const sessionMatch = responseText.match(/<!-- SESSION\|(.*?)\|(.*?) -->/i);
   if (sessionMatch) {
     dispatch({
       type: 'WORLD_SET',
-      payload: { era: sessionMatch[1], genre: sessionMatch[2] }
+      payload: { era: sessionMatch[1].trim(), genre: sessionMatch[2].trim() }
     });
   }
 
   // 3. Process CHAR (Profile Hydration)
-  const charMatches = Array.from(responseText.matchAll(/<!-- CHAR\|(PC|REB)\|(.*?) -->/g));
+  const charMatches = Array.from(responseText.matchAll(/<!-- CHAR\|(PC|REB)\|(.*?) -->/gi));
   charMatches.forEach(m => {
-    const role = m[1] as 'PC' | 'REB';
+    const role = m[1].toUpperCase() as 'PC' | 'REB';
     const pairs = m[2].split('|');
     const data: any = {};
     pairs.forEach(p => {
-      const [key, val] = p.split(':');
+      const parts = p.split(':');
+      if (parts.length < 2) return;
+      const key = parts[0].trim().toUpperCase();
+      const val = parts.slice(1).join(':').trim();
+      
       if (key === 'N') data.name = val;
       if (key === 'O') data.origin = val;
       if (key === 'W') data.wound = val;
@@ -73,98 +78,95 @@ export function processLLMResponse(
       if (key === 'D') data.drive = val;
       if (key === 'WANT') data.want = val;
       if (key === 'NEED') data.need = val;
-      if (key === 'S') data.skills = val.split(',').filter(Boolean);
+      if (key === 'S') data.skills = val.split(',').map(s => s.trim()).filter(Boolean);
     });
-    dispatch({ type: 'PROFILE_UPDATED', role, data });
+    if (Object.keys(data).length > 0) {
+      dispatch({ type: 'PROFILE_UPDATED', role, data });
+    }
   });
 
   // 4. Process SITUATION
-  const situationMatch = responseText.match(/<!-- SITUATION\|(.*?)\|(.*?) -->/);
+  const situationMatch = responseText.match(/<!-- SITUATION\|(.*?)\|(.*?) -->/i);
   if (situationMatch) {
     dispatch({
       type: 'SITUATION_DRAWN',
       situation: {
         id: `sit-${Date.now()}`,
-        label: situationMatch[1],
-        triggerCondition: situationMatch[2],
+        label: situationMatch[1].trim(),
+        triggerCondition: situationMatch[2].trim(),
         status: 'TRIGGERED'
       }
     });
   }
 
   // 5. Process PRESSURE
-  const pressureMatch = responseText.match(/<!-- PRESSURE\|(.*?)\|(.*?) -->/);
+  const pressureMatch = responseText.match(/<!-- PRESSURE\|(.*?)\|(.*?) -->/i);
   if (pressureMatch) {
     dispatch({
       type: 'PRESSURE_ADDED',
       tier: normalizeTier(pressureMatch[1]),
-      source: pressureMatch[2]
+      source: pressureMatch[2].trim()
     });
   }
 
   // 6. Process CRUX Moments
-  const cruxMatch = responseText.match(/<!-- CRUX\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/);
+  const cruxMatch = responseText.match(/<!-- CRUX\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/i);
   if (cruxMatch) {
     const [_, tierRaw, desc, want, need] = cruxMatch;
     dispatch({
       type: 'CRUX_TRIGGERED',
       definition: {
-        label: desc.substring(0, 30),
+        label: cruxMatch[2].trim().substring(0, 30),
         tier: normalizeTier(tierRaw),
-        description: desc,
-        wantPath: { action: want, stakes: "Pursue conscious goal" },
-        needPath: { action: need, stakes: "Embrace unconscious truth" }
+        description: cruxMatch[2].trim(),
+        wantPath: { action: want.trim(), stakes: "Pursue conscious goal" },
+        needPath: { action: need.trim(), stakes: "Embrace unconscious truth" }
       }
     });
   }
 
   // 7. Process Configuration Shifts
-  const configMatch = responseText.match(/<!-- CONFIG\|(.*?)\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/);
+  const configMatch = responseText.match(/<!-- CONFIG\|(.*?)\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/i);
   if (configMatch) {
     const [_, configType, pcWant, pcNeed, rebWant, rebNeed] = configMatch;
-    const validTypes = ['ALLIED_WANTS', 'ALLIED_NEEDS', 'CHIASTIC', 'CONVERGENT', 'DIVERGENT', 'ASYMMETRIC'];
+    const type = configType.trim().toUpperCase();
     
-    if (validTypes.includes(configType)) {
-      let newConfig: RelationshipConfiguration;
-      
-      switch (configType) {
-        case 'ALLIED_WANTS':
-          newConfig = { type: 'ALLIED_WANTS', description: "Aligned goals, opposed truths" };
-          break;
-        case 'ALLIED_NEEDS':
-          newConfig = { type: 'ALLIED_NEEDS', description: "Opposed goals, aligned truths" };
-          break;
-        case 'CHIASTIC':
-          newConfig = { type: 'CHIASTIC', description: "Cross-mirrored pursuit" };
-          break;
-        case 'CONVERGENT':
-          newConfig = { type: 'CONVERGENT', description: "Harmonious but fragile" };
-          break;
-        case 'DIVERGENT':
-          newConfig = { type: 'DIVERGENT', description: "Fundamental incompatibility" };
-          break;
-        case 'ASYMMETRIC':
-        default:
-          newConfig = { type: 'ASYMMETRIC', description: "Nuanced partial alignments", tensions: [`${pcWant} vs ${rebWant}`] };
-          break;
-      }
+    let newConfig: RelationshipConfiguration = { 
+      type: 'ASYMMETRIC', 
+      description: "Nuanced partial alignments", 
+      tensions: [`${pcWant} vs ${rebWant}`] 
+    };
+    
+    if (['ALLIED_WANTS', 'ALLIED_NEEDS', 'CHIASTIC', 'CONVERGENT', 'DIVERGENT', 'ASYMMETRIC'].includes(type)) {
+      if (type === 'ALLIED_WANTS') newConfig = { type: 'ALLIED_WANTS', description: "Aligned goals, opposed truths" };
+      else if (type === 'ALLIED_NEEDS') newConfig = { type: 'ALLIED_NEEDS', description: "Opposed goals, aligned truths" };
+      else if (type === 'CHIASTIC') newConfig = { type: 'CHIASTIC', description: "Cross-mirrored pursuit" };
+      else if (type === 'CONVERGENT') newConfig = { type: 'CONVERGENT', description: "Harmonious but fragile" };
+      else if (type === 'DIVERGENT') newConfig = { type: 'DIVERGENT', description: "Fundamental incompatibility" };
       
       dispatch({ type: 'CONFIGURATION_SHIFT', newConfig });
     }
   }
 
   // 8. Process NPC Updates
-  const npcMatches = Array.from(responseText.matchAll(/<!-- NPC\|(.*?):(.*?)\|(.*?) -->/g));
+  const npcMatches = Array.from(responseText.matchAll(/<!-- NPC\|(.*?):(.*?)\|(.*?) -->/gi));
   npcMatches.forEach(m => {
     dispatch({
       type: 'NPC_STATUS_CHANGED',
-      npcName: m[2],
-      status: m[3] as any
+      npcName: m[2].trim(),
+      status: m[3].trim().toUpperCase() as any
     });
   });
 
+  // 9. Wizard Progression
+  if (detectWizardCompletion(responseText) && currentState.phase === 'wizard') {
+    dispatch({ type: 'WIZARD_COMPLETE' });
+  } else if (currentState.phase === 'wizard') {
+    dispatch({ type: 'WIZARD_ADVANCE' });
+  }
+
   // Strip all tags for the UI
-  cleanText = cleanText.replace(/<!--[\s\S]*?-->/g, '').trim();
+  const cleanText = responseText.replace(/<!--[\s\S]*?-->/g, '').trim();
 
   return { cleanText, errors, extractedTags };
 }

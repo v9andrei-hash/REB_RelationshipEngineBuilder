@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { gemini } from './services/geminiService';
 import { Message, SystemLogEntry } from './types';
 import Sidebar from './components/Sidebar';
@@ -65,13 +64,13 @@ const AppContent: React.FC = () => {
         });
       }
 
-      // 1. Route the Output
+      // 1. Route the Output (Separate prose, OOC, and meta)
       const routed = routeOutput(fullResponse);
       
       // 2. Process Telemetry (Physics)
-      const { cleanText, errors, extractedTags } = applyRawResponse(fullResponse);
+      const { errors, extractedTags } = applyRawResponse(fullResponse);
 
-      // 3. Semantic Validation
+      // 3. Semantic Validation (Only on prose)
       const driftWarnings = checkSemanticDrift(routed.simulation, state);
 
       // 4. Update Logs
@@ -95,7 +94,10 @@ const AppContent: React.FC = () => {
           ooc: routed.simulationOOC,
           meta: routed.systemLog,
           hiddenStats: extractedTags.join('\n'),
-          compliance: { isPassed: errors.length === 0 && driftWarnings.length === 0, violations: [...errors, ...driftWarnings.map(w => w.message)] }
+          compliance: { 
+            isPassed: errors.length === 0 && driftWarnings.length === 0, 
+            violations: [...errors, ...driftWarnings.map(w => w.message)] 
+          }
         }];
       });
       

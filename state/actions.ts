@@ -21,4 +21,6 @@ export type SimulationAction =
   | { type: 'PRESSURE_RESOLVED'; source: string }
   | { type: 'UPDATE_USAGE'; inputTokens: number; outputTokens: number }
   | { type: 'WORLD_SET'; payload: WorldState }
-  | { type: 'PROFILE_UPDATED'; role: 'PC' | 'REB'; data: Partial<PlayerCharacter | RebCharacter> };
+  | { type: 'PROFILE_UPDATED'; role: 'PC' | 'REB'; data: Partial<PlayerCharacter | RebCharacter> }
+  | { type: 'WIZARD_ADVANCE' }
+  | { type: 'WIZARD_COMPLETE' };

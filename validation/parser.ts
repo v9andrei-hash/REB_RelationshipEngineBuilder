@@ -1,4 +1,3 @@
-
 import { ValidationError } from './errors';
 
 export interface RawDelta {
@@ -20,46 +19,61 @@ export type ParseResult<T> =
   | { success: true; data: T | null } 
   | { success: false; error: ValidationError };
 
+/**
+ * Flexible helper to extract a numeric stat from a tag string
+ */
+function extractStat(tag: string, key: string, defaultValue: number = 0): number {
+  const regex = new RegExp(`${key}:?\\s*([+-]?\\d+)`, 'i');
+  const match = tag.match(regex);
+  return match ? parseInt(match[1]) : defaultValue;
+}
+
+/**
+ * Extracts the VT code and magnitude
+ */
+function extractVT(tag: string): { vt_code: string; vt_mag: number } {
+  const vtRegex = /VT:?\s*([A-Z]+|None)\s*([+-]?\d+)?/i;
+  const match = tag.match(vtRegex);
+  if (!match) return { vt_code: 'NONE', vt_mag: 0 };
+  
+  return {
+    vt_code: match[1].toUpperCase(),
+    vt_mag: match[2] ? parseInt(match[2]) : 0
+  };
+}
+
 export function parseDelta(raw: string): ParseResult<RawDelta> {
-  // First, check if a Delta tag is even attempted (looking for the Δ symbol)
-  if (!raw.includes('Δ')) {
+  const deltaTagMatch = raw.match(/<!--\s*Δ[\s\S]*?-->/i);
+  
+  if (!deltaTagMatch) {
     return { success: true, data: null };
   }
 
-  /**
-   * Robust regex allowing for:
-   * - Optional colons after labels (Ar: vs Ar)
-   * - Varying whitespace between labels and values
-   * - Case insensitivity
-   * - Flexible VT formatting (handles VT:None or VT:LH+5)
-   * - TRN group removed as per user request
-   */
-  const deltaRegex = /<!--\s*Δ\s*Ar:?\s*([+-]?\d+)\s*Ox:?\s*([+-]?\d+)\s*Fv:?\s*([+-]?\d+)\s*En:?\s*([+-]?\d+)\s*PC_AL:?\s*([+-]?\d+)\s*PC_AW:?\s*([+-]?\d+)\s*PC_OB:?\s*([+-]?\d+)\s*REB_AL:?\s*([+-]?\d+)\s*REB_AW:?\s*([+-]?\d+)\s*REB_OB:?\s*([+-]?\d+)\s*VT:?\s*([A-Z]+|None)\s*([+-]?\d+)?\s*-->/i;
-  
-  const match = raw.match(deltaRegex);
-  
-  if (!match) {
+  const tag = deltaTagMatch[0];
+
+  try {
+    const data: RawDelta = {
+      ar: extractStat(tag, 'Ar'),
+      ox: extractStat(tag, 'Ox'),
+      fv: extractStat(tag, 'Fv'),
+      en: extractStat(tag, 'En'),
+      pc_al: extractStat(tag, 'PC_AL'),
+      pc_aw: extractStat(tag, 'PC_AW'),
+      pc_ob: extractStat(tag, 'PC_OB'),
+      reb_al: extractStat(tag, 'REB_AL'),
+      reb_aw: extractStat(tag, 'REB_AW'),
+      reb_ob: extractStat(tag, 'REB_OB'),
+      ...extractVT(tag)
+    };
+
+    return {
+      success: true,
+      data
+    };
+  } catch (err) {
     return {
       success: false,
-      error: { type: 'PARSE_FAILURE', message: 'Malformed Delta tag. Telemetry sync failed.' }
+      error: { type: 'PARSE_FAILURE', message: 'Failed to process Delta telemetry.' }
     };
   }
-
-  return {
-    success: true,
-    data: {
-      ar: parseInt(match[1]),
-      ox: parseInt(match[2]),
-      fv: parseInt(match[3]),
-      en: parseInt(match[4]),
-      pc_al: parseInt(match[5]),
-      pc_aw: parseInt(match[6]),
-      pc_ob: parseInt(match[7]),
-      reb_al: parseInt(match[8]),
-      reb_aw: parseInt(match[9]),
-      reb_ob: parseInt(match[10]),
-      vt_code: match[11].toUpperCase(),
-      vt_mag: match[12] ? parseInt(match[12]) : 0 // Default to 0 if magnitude is missing
-    }
-  };
 }

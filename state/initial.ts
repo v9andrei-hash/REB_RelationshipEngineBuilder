@@ -4,6 +4,8 @@ import { createAdrenaline, createOxytocin, createFavor, createEntropy } from '..
 export const createInitialState = (): SimulationState => ({
   version: "3.5.1",
   timestamp: Date.now(),
+  phase: 'wizard',
+  wizardStep: 1,
   bondMatrix: {
     adrenaline: createAdrenaline(0),
     oxytocin: createOxytocin(0),

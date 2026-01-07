@@ -1,13 +1,10 @@
+
 import { BondMatrix } from './bondMatrix';
 import { CharacterArc } from './characterArc';
 import { Act } from './act';
 import { RelationshipConfiguration } from './configuration';
 import { CruxState, ConflictTier } from './conflict';
 
-/**
- * Defining Portrait here to avoid circular dependencies with types.ts
- * while allowing Simulation-related types to reference it.
- */
 export interface Portrait {
   id: string;
   characterName: string;
@@ -25,7 +22,6 @@ export interface NPCState {
   portrait?: Portrait;
 }
 
-// Added NPC alias for compatibility with external services
 export type NPC = NPCState;
 
 export interface SituationState {
@@ -36,7 +32,6 @@ export interface SituationState {
   resolutionSummary?: string;
 }
 
-// Added Situation alias for compatibility with external services
 export type Situation = SituationState;
 
 export interface AnchorPoint {
@@ -56,7 +51,6 @@ export interface PressureSource {
   active: boolean;
 }
 
-// Added missing SceneSnapshot type referenced in Dashboard and App
 export interface SceneSnapshot {
   id: string;
   timestamp: number;
@@ -64,7 +58,6 @@ export interface SceneSnapshot {
   delta?: string;
 }
 
-// Added missing Chronicle type referenced in GeminiService and App
 export interface Chronicle {
   id: string;
   title: string;
@@ -73,7 +66,6 @@ export interface Chronicle {
   timestamp: number;
 }
 
-// Added missing PlayerCharacter and RebCharacter types referenced in GeminiService and Dashboard
 export interface PlayerCharacter extends CharacterArc {
   name: string;
   origin?: string;
@@ -103,6 +95,10 @@ export interface SimulationState {
   version: "3.5.1";
   timestamp: number;
   
+  // Phase Tracking
+  phase: 'wizard' | 'narrative';
+  wizardStep: number | null;
+
   // Relationship State
   bondMatrix: BondMatrix;
   configuration: RelationshipConfiguration;

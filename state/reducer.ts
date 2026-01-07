@@ -1,38 +1,45 @@
-
-import { SimulationState, NPCState, SituationState, PressureSource } from '../types/simulation';
+import { SimulationState } from '../types/simulation';
 import { SimulationAction } from './actions';
 import { selectAlignmentState, selectAwarenessState } from './selectors';
 import { createAdrenaline, createOxytocin, createFavor, createEntropy } from '../types/bondMatrix';
 import { amplifyChange, calculateCruxEffects } from './effects';
-import { Act1, Act2, Act3 } from '../types/act';
-
-// Extend SimulationState to track metadata internally for the reducer
-interface ExtendedSimulationState extends SimulationState {
-  cruxHistory: ('WANT' | 'NEED')[];
-  pendingCruxPressure: boolean;
-}
+import { Act2, Act3 } from '../types/act';
 
 export function simulationReducer(
-  state: ExtendedSimulationState,
+  state: SimulationState,
   action: SimulationAction
-): ExtendedSimulationState {
+): SimulationState {
   switch (action.type) {
     case 'INITIALIZE':
       return {
-        ...(action.payload as ExtendedSimulationState),
-        cruxHistory: (action.payload as any).cruxHistory || [],
-        pendingCruxPressure: (action.payload as any).pendingCruxPressure || false
+        ...action.payload,
+        cruxHistory: action.payload.cruxHistory || [],
+        pendingCruxPressure: action.payload.pendingCruxPressure || false
+      };
+
+    case 'WIZARD_ADVANCE':
+      return {
+        ...state,
+        wizardStep: state.wizardStep ? state.wizardStep + 1 : 1
+      };
+
+    case 'WIZARD_COMPLETE':
+      return {
+        ...state,
+        phase: 'narrative',
+        wizardStep: null
       };
 
     case 'WORLD_SET':
-      return { ...state, world: action.payload };
+      return { ...state, world: { ...state.world, ...action.payload } };
 
-    case 'PROFILE_UPDATED':
+    case 'PROFILE_UPDATED': {
       const roleKey = action.role.toLowerCase() as 'pc' | 'reb';
       return {
         ...state,
         [roleKey]: { ...state[roleKey], ...action.data }
       };
+    }
 
     case 'APPLY_DELTA': {
       const { payload: d } = action;
@@ -68,7 +75,7 @@ export function simulationReducer(
         },
         pc: updateArc('pc'),
         reb: updateArc('reb'),
-        turnCounter: state.turnCounter + 1, // Incremented locally now TRN is removed from telemetry
+        turnCounter: state.turnCounter + 1,
         densityTotal: state.densityTotal + Math.abs(d.vt_mag)
       };
     }
@@ -187,18 +194,25 @@ export function simulationReducer(
         )
       };
 
-    case 'NPC_STATUS_CHANGED':
+    case 'NPC_STATUS_CHANGED': {
+      const existing = state.npcs[action.npcName] || {
+        name: action.npcName,
+        role: 'Rival',
+        status: 'WATCHING',
+        influence: 0
+      };
+      
       return {
         ...state,
         npcs: {
           ...state.npcs,
           [action.npcName]: {
-            ...state.npcs[action.npcName],
-            name: action.npcName,
+            ...existing,
             status: action.status
           }
         }
       };
+    }
 
     case 'PRESSURE_ADDED':
       return {
