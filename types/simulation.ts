@@ -25,4 +25,8 @@ export interface SimulationState {
   turnCounter: number; // 0-5 until Situation Deck
   week: number;
   densityTotal: number; // 0-40 until Week Advance
+
+  // Internal Engine Metadata
+  cruxHistory: ('WANT' | 'NEED')[];
+  pendingCruxPressure: boolean;
 }
