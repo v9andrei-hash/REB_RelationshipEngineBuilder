@@ -17,10 +17,11 @@ export function simulationReducer(
 ): ExtendedSimulationState {
   switch (action.type) {
     case 'INITIALIZE':
+      // Ensure we use the NEW payload data for a fresh start, not the old state's history
       return {
-        ...action.payload,
-        cruxHistory: (state as any).cruxHistory || [],
-        pendingCruxPressure: (state as any).pendingCruxPressure || false
+        ...(action.payload as ExtendedSimulationState),
+        cruxHistory: (action.payload as any).cruxHistory || [],
+        pendingCruxPressure: (action.payload as any).pendingCruxPressure || false
       };
 
     case 'APPLY_DELTA': {
@@ -210,6 +211,13 @@ export function simulationReducer(
         pressures: state.pressures.map(p =>
           p.source === action.source ? { ...p, active: false } : p
         )
+      };
+
+    case 'UPDATE_USAGE':
+      return {
+        ...state,
+        inputTokens: state.inputTokens + action.inputTokens,
+        outputTokens: state.outputTokens + action.outputTokens
       };
 
     default:

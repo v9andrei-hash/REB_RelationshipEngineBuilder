@@ -113,6 +113,10 @@ export interface SimulationState {
   turnCounter: number;
   week: number;
   densityTotal: number;
+  
+  // Usage tracking
+  inputTokens: number;
+  outputTokens: number;
 
   // Narrative Tracking
   npcs: Record<string, NPCState>;

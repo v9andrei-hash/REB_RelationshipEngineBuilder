@@ -19,4 +19,5 @@ export type SimulationAction =
   | { type: 'CONFIGURATION_SHIFT'; newConfig: RelationshipConfiguration }
   | { type: 'NPC_STATUS_CHANGED'; npcName: string; status: 'ACTING' | 'WATCHING' | 'DORMANT' }
   | { type: 'PRESSURE_ADDED'; tier: ConflictTier; source: string }
-  | { type: 'PRESSURE_RESOLVED'; source: string };
+  | { type: 'PRESSURE_RESOLVED'; source: string }
+  | { type: 'UPDATE_USAGE'; inputTokens: number; outputTokens: number };

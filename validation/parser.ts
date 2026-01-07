@@ -1,4 +1,3 @@
-
 import { ValidationError } from './errors';
 
 export interface RawDelta {
@@ -23,7 +22,14 @@ export type ParseResult<T> =
   | { success: false; error: ValidationError };
 
 export function parseDelta(raw: string): ParseResult<RawDelta> {
-  const deltaRegex = /<!-- Δ Ar([+-]?\d+) Ox([+-]?\d+) Fv([+-]?\d+) En([+-]?\d+) PC_AL([+-]?\d+) PC_AW([+-]?\d+) PC_OB([+-]?\d+) REB_AL([+-]?\d+) REB_AW([+-]?\d+) REB_OB([+-]?\d+) TRN:(\d+)\/(\d+) VT:([A-Z]{2})([+-]?\d+) -->/;
+  /**
+   * More robust regex allowing for:
+   * - Optional colons after labels (Ar: vs Ar)
+   * - Varying whitespace between labels and values
+   * - Case insensitivity
+   * - Flexible TRN and VT formatting
+   */
+  const deltaRegex = /<!--\s*Δ\s*Ar:?\s*([+-]?\d+)\s*Ox:?\s*([+-]?\d+)\s*Fv:?\s*([+-]?\d+)\s*En:?\s*([+-]?\d+)\s*PC_AL:?\s*([+-]?\d+)\s*PC_AW:?\s*([+-]?\d+)\s*PC_OB:?\s*([+-]?\d+)\s*REB_AL:?\s*([+-]?\d+)\s*REB_AW:?\s*([+-]?\d+)\s*REB_OB:?\s*([+-]?\d+)\s*TRN:?\s*(\d+)\s*\/\s*(\d+)\s*VT:?\s*([A-Z]{2})\s*([+-]?\d+)\s*-->/i;
   
   const match = raw.match(deltaRegex);
   
@@ -49,7 +55,7 @@ export function parseDelta(raw: string): ParseResult<RawDelta> {
       reb_ob: parseInt(match[10]),
       trn_current: parseInt(match[11]),
       trn_max: parseInt(match[12]),
-      vt_code: match[13],
+      vt_code: match[13].toUpperCase(),
       vt_mag: parseInt(match[14])
     }
   };

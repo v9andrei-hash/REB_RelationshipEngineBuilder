@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import { Layout, MessageSquare, Database, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Terminal as TerminalIcon, Loader2, Clock } from 'lucide-react';
 
@@ -118,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, stats, anchorCo
               <span className="text-[9px] text-gray-500 uppercase font-black">Context Load</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-white font-mono" title="Tokens consumed">
+              <span className="text-[10px] text-white font-mono" title={`In: ${stats.inputTokens || 0} / Out: ${stats.outputTokens || 0}`}>
                 {(stats.tokens || 0).toLocaleString()} <span className="text-gray-600">tkn</span>
               </span>
               <div className="w-px h-2 bg-white/10 mx-0.5" />

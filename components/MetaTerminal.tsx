@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Terminal as TerminalIcon, Cpu, AlertCircle, Send, Loader2, Code2, Save, FileCode, Ghost, Sparkles, Activity, CheckCircle, Zap, ShieldAlert, RefreshCw } from 'lucide-react';
 import { Message, SimulationIntervention } from '../types';
@@ -81,7 +80,14 @@ const MetaTerminal: React.FC<MetaTerminalProps> = ({
                    <span className="text-[9px] font-black uppercase tracking-widest">{msg.role === 'user' ? (msg.isMeta ? 'ADMIN@META' : 'ADMIN@SIM') : 'ARCHITECT@REB'}</span>
                    <span className="text-[8px] opacity-50">[{new Date().toLocaleTimeString()}]</span>
                 </div>
-                <div className={`whitespace-pre-wrap ${msg.role === 'user' ? 'text-blue-200' : 'text-green-400 font-bold'}`}>{msg.hiddenStats || msg.content}</div>
+                <div className={`whitespace-pre-wrap ${msg.role === 'user' ? 'text-blue-200' : 'text-green-400 font-bold'}`}>
+                  {msg.hiddenStats ? (
+                    <div className="flex flex-col gap-1">
+                      <div className="text-white opacity-90">{msg.hiddenStats}</div>
+                      {msg.content && <div className="text-[8px] text-gray-500 italic mt-1 font-normal opacity-50 select-none border-t border-white/5 pt-1">Prose content suppressed for terminal fidelity.</div>}
+                    </div>
+                  ) : msg.content}
+                </div>
               </div>
             ))}
             {isProcessing && <div className="flex items-center gap-2 text-[10px] text-blue-500/50 italic animate-pulse"><Loader2 size={12} className="animate-spin" /> Root executing...</div>}

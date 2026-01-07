@@ -1,3 +1,4 @@
+
 import { SimulationState } from '../types/simulation';
 import { createAdrenaline, createOxytocin, createFavor, createEntropy } from '../types/bondMatrix';
 
@@ -40,6 +41,8 @@ export const createInitialState = (): SimulationState => ({
   turnCounter: 0,
   week: 1,
   densityTotal: 0,
+  inputTokens: 0,
+  outputTokens: 0,
   npcs: {},
   situations: [],
   anchors: [],

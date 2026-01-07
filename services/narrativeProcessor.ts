@@ -1,3 +1,4 @@
+
 import { Dispatch } from 'react';
 import { SimulationAction } from '../state/actions';
 import { SimulationState } from '../types/simulation';
@@ -8,6 +9,7 @@ import { RelationshipConfiguration } from '../types/configuration';
 export interface ProcessResult {
   cleanText: string;
   errors: string[];
+  extractedTags: string[];
 }
 
 const VALID_TIERS: ConflictTier[] = ['INT', 'PER', 'EXT', 'INT_PER', 'PER_EXT', 'INT_EXT', 'INT_PER_EXT'];
@@ -31,6 +33,9 @@ export function processLLMResponse(
 ): ProcessResult {
   const errors: string[] = [];
   let cleanText = responseText;
+  
+  // Extract all HTML comments as tags for meta visualization
+  const extractedTags = (responseText.match(/<!--[\s\S]*?-->/g) || []).map(t => t.trim());
 
   // 1. Process Delta (Physics)
   const validation = validateDelta(responseText, currentState);
@@ -108,5 +113,5 @@ export function processLLMResponse(
   // Strip all tags for the UI
   cleanText = cleanText.replace(/<!--[\s\S]*?-->/g, '').trim();
 
-  return { cleanText, errors };
+  return { cleanText, errors, extractedTags };
 }

@@ -1,3 +1,4 @@
+
 import { SimulationState } from '../types/simulation';
 import { AwarenessState, AlignmentState } from '../types/characterArc';
 import { getActiveCrisis, CrisisState } from '../types/crisis';
@@ -45,6 +46,8 @@ export interface DashboardStats {
   turns: number;
   act: number;
   tokens: number;
+  inputTokens: number;
+  outputTokens: number;
 }
 
 export const selectDashboardStats = (state: SimulationState): DashboardStats => ({
@@ -61,5 +64,7 @@ export const selectDashboardStats = (state: SimulationState): DashboardStats => 
   week: state.week,
   turns: state.turnCounter,
   act: state.act.actNumber,
-  tokens: state.densityTotal
+  tokens: state.densityTotal,
+  inputTokens: state.inputTokens,
+  outputTokens: state.outputTokens
 });
