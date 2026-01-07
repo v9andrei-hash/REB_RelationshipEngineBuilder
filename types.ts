@@ -1,5 +1,4 @@
 
-
 export interface Message {
   role: 'user' | 'model';
   content: string;
@@ -13,15 +12,19 @@ export interface Message {
 
 export interface CharacterArc {
   name: string;
+  origin?: string;
+  wound?: string;
+  drive?: string;
+  want?: string;
+  need?: string;
   initialState: string;
   currentState: string;
   progressionNote: string;
   momentum: 'Ascending' | 'Descending' | 'Stagnant';
 }
 
-/**
- * Interface representing a generated character portrait
- */
+export type ConfigurationType = 'ALLIED_WANTS' | 'ALLIED_NEEDS' | 'CHIASTIC' | 'CONVERGENT' | 'DIVERGENT' | 'ASYMMETRIC';
+
 export interface Portrait {
   id: string;
   characterName: string;
@@ -59,10 +62,10 @@ export interface Chronicle {
     npcs: NPC[];
     situations: Situation[];
     inventory: Item[];
-    // Fix: Include PC and REB profile data in telemetry for export/import persistence
     pc?: PlayerCharacter | null;
     reb?: RebCharacter | null;
     systemContext?: string;
+    configuration?: ConfigurationType;
   };
   log: Message[];
   resumptionPayload: string;
@@ -70,7 +73,7 @@ export interface Chronicle {
 
 export interface SimulationIntervention {
   id: string;
-  type: 'Physics' | 'Narrative' | 'Situation';
+  type: 'Physics' | 'Narrative' | 'Situation' | 'Telemetry';
   severity: 'Low' | 'Medium' | 'High' | 'CRITICAL';
   description: string;
   proposedFix: string;
@@ -82,9 +85,9 @@ export interface NPC {
   status: string;
   role: string;
   proximity: 'High' | 'Medium' | 'Low';
-  portrait?: Portrait; // Portait is now defined in this file
-  temperament?: string; // NEW - for portrait generation
-  physicalDescription?: string; // NEW - wizard input
+  portrait?: Portrait;
+  temperament?: string;
+  physicalDescription?: string;
 }
 
 export interface Situation {
@@ -111,24 +114,16 @@ export interface SceneSnapshot {
   timestamp: number;
   act: number;
   week: number;
-  stats: {
-    adr: number;
-    oxy: number;
-    favor: number;
-    entropy: number;
-    willpower: number;
-    clarity: number;
-    pcObsession: number;
-    rebObsession: number;
-  };
+  stats: SimulationState['stats'];
 }
 
 export interface SimulationState {
   isInitialized: boolean;
   contextLoaded: boolean;
   activeAct: number;
-  pc?: PlayerCharacter; // NEW
-  reb?: RebCharacter; // NEW
+  pc?: PlayerCharacter;
+  reb?: RebCharacter;
+  configuration?: ConfigurationType;
   stats: {
     adr: number;
     oxy: number;
@@ -136,8 +131,12 @@ export interface SimulationState {
     entropy: number;
     willpower: number;
     clarity: number;
-    pcObsession: number;
-    rebObsession: number;
+    pcAL: number; // Alignment
+    pcAW: number; // Awareness
+    pcOB: number; // Obsession
+    rebAL: number;
+    rebAW: number;
+    rebOB: number;
     week: number;
     tokens: number;
     act: number;
@@ -149,12 +148,14 @@ export interface SimulationState {
   inventory: Item[];
   sceneHistory: SceneSnapshot[];
 }
-// Add PC and REB character types for dashboard
+
 export interface PlayerCharacter {
   name: string;
   origin: string;
   wound: string;
   drive: string;
+  want?: string;
+  need?: string;
   skills: string[];
   portrait?: Portrait;
   physicalDescription?: string;
@@ -166,12 +167,13 @@ export interface RebCharacter {
   temperament: string;
   wound: string;
   drive: string;
+  want?: string;
+  need?: string;
   portrait?: Portrait;
   physicalDescription?: string;
-  literaryPreset?: string; // If using canonical character
+  literaryPreset?: string;
 }
 
-// Portrait generation request (mirrors service interface)
 export interface PortraitRequest {
   name: string;
   role: 'PC' | 'REB' | 'NPC';

@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
-import { Zap, TrendingUp, Shield, Thermometer, Activity, Users, Layers, Timer, Milestone, Brain, Flame, ArrowUpRight, Crosshair, Package, Archive, Box, Star } from 'lucide-react';
-import { AnchorPoint, NPC, Situation, SceneSnapshot, Item, PlayerCharacter, RebCharacter } from '../types';
+import { Zap, TrendingUp, Shield, Thermometer, Activity, Users, Layers, Timer, Milestone, Brain, Flame, ArrowUpRight, Crosshair, Package, Archive, Box, Star, Eye, Target, Link } from 'lucide-react';
+import { AnchorPoint, NPC, Situation, SceneSnapshot, Item, PlayerCharacter, RebCharacter, ConfigurationType } from '../types';
 import PortraitDisplay from './PortraitDisplay';
 
 interface DashboardProps {
@@ -18,73 +18,78 @@ interface DashboardProps {
   pc?: PlayerCharacter | null;
   reb?: RebCharacter | null;
   currentQuadrant?: 'Q1' | 'Q2' | 'Q3' | 'Q4';
+  configuration?: ConfigurationType;
   onRegeneratePortrait?: (name: string, role: 'PC' | 'REB' | 'NPC', extraData?: any) => void;
   generatingPortraits?: string[]
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   view, stats, anchors, npcs, situations, inventory, sceneHistory, lastDelta, 
-  situationCountdown = 5, pc, reb, currentQuadrant, onRegeneratePortrait, generatingPortraits = [] 
+  situationCountdown = 5, pc, reb, currentQuadrant, configuration, onRegeneratePortrait, generatingPortraits = [] 
 }) => {
 
   const tensionPoint = [
-    { x: Math.min(500, Math.max(0, stats.adr)), y: Math.min(500, Math.max(0, stats.oxy)), name: 'Current State' }
+    { x: stats.adr, y: stats.oxy, name: 'Current State' }
   ];
 
-  const historyData = [...sceneHistory].reverse().map((snap, i) => ({
-    index: i,
-    adr: snap.stats.adr,
-    oxy: snap.stats.oxy,
-    label: `S${i}`
-  }));
+  const shadowLeakRisk = Math.abs(stats.adr) > 350 || Math.abs(stats.oxy) > 400 ? 'CRITICAL' : (Math.abs(stats.adr) > 250 || Math.abs(stats.oxy) > 300 ? 'HIGH' : 'STABLE');
 
-  const vtMatch = lastDelta?.match(/VT:(\w+)([+-]\d+)/);
-  const shadowLeakRisk = stats.adr > 350 || stats.oxy > 400 ? 'CRITICAL' : (stats.adr > 250 || stats.oxy > 300 ? 'HIGH' : 'STABLE');
+  const ArcTriad = ({ al, aw, ob, want, need, role }: { al: number, aw: number, ob: number, want?: string, need?: string, role: string }) => {
+    const getAwarenessLabel = (val: number) => {
+      if (val < 20) return 'BLIND';
+      if (val < 40) return 'DEFENDED';
+      if (val < 60) return 'GLIMPSING';
+      if (val < 80) return 'SEEING';
+      return 'LUCID';
+    };
 
-  const StatBox = ({ icon: Icon, label, value, color, desc }: any) => (
-    <div className="bg-[#111] border border-white/5 p-6 rounded-3xl hover:border-white/10 transition-all group">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-2xl ${color} bg-opacity-10 group-hover:scale-110 transition-transform`}>
-          <Icon className={color} size={20} />
-        </div>
-        <div className="text-right">
-          <span className="text-[10px] text-gray-500 uppercase font-black block">{label}</span>
-          <p className="text-[9px] text-gray-600 font-medium leading-none mt-1">{desc}</p>
-        </div>
-      </div>
-      <div className="text-3xl font-black text-white mono tracking-tighter italic">{value}</div>
-    </div>
-  );
-
-  const InventoryGrid = ({ owner, title }: { owner: string, title: string }) => {
-    const items = inventory.filter(i => i.owner.toLowerCase() === owner.toLowerCase());
     return (
-      <div className="space-y-4">
-        <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2">
-          <Package size={14} className="text-blue-500" />
-          {title}
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {items.length === 0 ? (
-            <div className="col-span-full py-10 border border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center opacity-20">
-               <Box size={24} className="mb-2" />
-               <p className="text-[9px] font-black uppercase">No inventory detected.</p>
+      <div className="bg-[#0f0f0f] border border-white/5 rounded-[32px] p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{role} ARCHITECTURE</span>
+          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${aw > 80 ? 'bg-amber-500/10 text-amber-500 animate-pulse' : 'bg-white/5 text-gray-400'}`}>
+            Status: {getAwarenessLabel(aw)}
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex justify-between text-[10px] font-black uppercase">
+              <span className="text-blue-400">Want</span>
+              <span className="text-orange-400">Need</span>
             </div>
-          ) : (
-            items.map((item, idx) => (
-              <div key={idx} className="bg-white/5 border border-white/10 p-4 rounded-2xl group transition-all hover:border-blue-500/30">
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="text-xs font-black text-white uppercase italic">{item.name}</h4>
-                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
-                    item.property === 'Relic' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-400'
-                  }`}>
-                    {item.property}
-                  </span>
-                </div>
-                <p className="text-[10px] text-gray-400 italic leading-snug">"{item.description}"</p>
+            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden relative border border-white/5">
+              <div 
+                className="absolute top-0 bottom-0 w-1 bg-white z-10 shadow-[0_0_8px_white]" 
+                style={{ left: `${((al + 100) / 200) * 100}%` }} 
+              />
+              <div className="h-full bg-gradient-to-r from-blue-600/30 via-transparent to-orange-600/30" />
+            </div>
+            <p className="text-[10px] text-gray-500 italic text-center">
+              {al < -20 ? want : al > 20 ? need : "Liminal Drift"}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[9px] text-gray-600 font-black uppercase">Awareness</span>
+                <span className="text-xs font-mono text-white">{aw}%</span>
               </div>
-            ))
-          )}
+              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-amber-500" style={{ width: `${aw}%` }} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[9px] text-gray-600 font-black uppercase">Obsession</span>
+                <span className="text-xs font-mono text-white">{ob}%</span>
+              </div>
+              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-red-600" style={{ width: `${ob}%` }} />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -105,98 +110,76 @@ const Dashboard: React.FC<DashboardProps> = ({
           />
           <div>
             <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase">{reb?.name || "REB Surveillance"}</h2>
-            <p className="text-gray-500 font-medium text-lg uppercase tracking-widest">{reb?.origin || "Central Engine Interface"}</p>
             <div className="mt-4 flex gap-3">
               <span className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-[10px] text-blue-400 font-black uppercase italic">
                 {reb?.temperament || 'Unknown Temperament'}
               </span>
               <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-black uppercase italic">
-                Wound: {reb?.wound || 'None'}
+                {reb?.origin || 'Unknown Origin'}
               </span>
             </div>
           </div>
         </div>
         <div className="flex flex-col gap-4 items-end">
+          {configuration && (
+            <div className="px-4 py-2 bg-blue-600/10 border border-blue-500/20 rounded-xl text-[10px] text-blue-400 font-black uppercase italic flex items-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+              <Link size={12} />
+              Engine: {configuration}
+            </div>
+          )}
           <div className={`px-4 py-2 border rounded-xl text-[10px] font-black uppercase italic ${
             shadowLeakRisk === 'CRITICAL' ? 'bg-red-500/10 border-red-500 text-red-500 animate-pulse' : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
           }`}>
             Shadow Risk: {shadowLeakRisk}
           </div>
-          <div className="px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-xl text-[10px] text-purple-500 font-black uppercase italic">
-            Entropy: {stats.entropy}
-          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatBox icon={Zap} label="Adrenaline" value={stats.adr} color="text-blue-400" desc="Stress/Excitement" />
-        <StatBox icon={TrendingUp} label="Oxytocin" value={stats.oxy} color="text-pink-400" desc="Bond Integrity" />
-        <StatBox icon={Shield} label="Favor" value={stats.favor} color="text-cyan-400" desc="Engine Approval" />
-        <StatBox icon={Thermometer} label="Entropy" value={stats.entropy} color="text-purple-400" desc="Physics Breakdown" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col relative">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <ArcTriad role="REB" al={stats.rebAL} aw={stats.rebAW} ob={stats.rebOB} want={reb?.want} need={reb?.need} />
+        
+        <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col relative">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Phase Matrix Diagnostic</h3>
-            <div className="text-[8px] text-gray-600 font-mono uppercase">X: Stress | Y: Bond</div>
+            <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em]">Singularity Radar</h3>
+            <div className="text-[8px] text-gray-600 font-mono uppercase">X: Adrenaline | Y: Oxytocin</div>
           </div>
-          <div className="flex-1 min-h-[400px] w-full relative">
+          <div className="flex-1 min-h-[300px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#222" />
-                <XAxis type="number" dataKey="x" hide domain={[0, 500]} />
-                <YAxis type="number" dataKey="y" hide domain={[0, 500]} />
-                <ZAxis type="number" range={[200, 200]} />
+                <XAxis type="number" dataKey="x" hide domain={[-500, 500]} />
+                <YAxis type="number" dataKey="y" hide domain={[-500, 500]} />
                 
-                <ReferenceArea x1={250} x2={500} y1={250} y2={500} fill="#3b82f6" fillOpacity={0.05} label={{ position: 'insideTopRight', value: 'SYNCHRONY', fill: '#3b82f6', fontSize: 10, fontWeight: 900 }} />
-                <ReferenceArea x1={0} x2={250} y1={250} y2={500} fill="#ec4899" fillOpacity={0.05} label={{ position: 'insideTopLeft', value: 'SAFETY', fill: '#ec4899', fontSize: 10, fontWeight: 900 }} />
-                <ReferenceArea x1={250} x2={500} y1={0} y2={250} fill="#f43f5e" fillOpacity={0.05} label={{ position: 'insideBottomRight', value: 'COMBUSTION', fill: '#f43f5e', fontSize: 10, fontWeight: 900 }} />
-                <ReferenceArea x1={0} x2={250} y1={0} y2={250} fill="#6b7280" fillOpacity={0.05} label={{ position: 'insideBottomLeft', value: 'VOID', fill: '#6b7280', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={350} x2={500} y1={350} y2={500} fill="#f59e0b" fillOpacity={0.1} label={{ position: 'center', value: 'SUPERNOVA', fill: '#f59e0b', fontSize: 10, fontWeight: 900 }} />
+                <ReferenceArea x1={-500} x2={-350} y1={-500} y2={-350} fill="#6366f1" fillOpacity={0.1} label={{ position: 'center', value: 'EVENT HORIZON', fill: '#6366f1', fontSize: 10, fontWeight: 900 }} />
                 
-                <ReferenceLine x={250} stroke="#333" strokeDasharray="5 5" />
-                <ReferenceLine y={250} stroke="#333" strokeDasharray="5 5" />
+                <ReferenceLine x={0} stroke="#333" strokeDasharray="5 5" />
+                <ReferenceLine y={0} stroke="#333" strokeDasharray="5 5" />
                 
-                <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '12px' }} />
                 <Scatter name="State" data={tensionPoint} fill="#3b82f6" shape="cross" className="filter drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
               </ScatterChart>
             </ResponsiveContainer>
           </div>
         </div>
-
-        <div className="space-y-8 flex flex-col">
-           <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex flex-col flex-1">
-              <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] mb-6">Historical Flux</h3>
-              <div className="flex-1 w-full min-h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={historyData}>
-                    <defs>
-                      <linearGradient id="colorAdr" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                      <linearGradient id="colorOxy" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ec4899" stopOpacity={0.3}/><stop offset="95%" stopColor="#ec4899" stopOpacity={0}/></linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#000', border: '1px solid #333', borderRadius: '12px', fontSize: '10px' }} />
-                    <Area type="monotone" dataKey="adr" stroke="#3b82f6" strokeWidth={3} fill="url(#colorAdr)" name="Stress" />
-                    <Area type="monotone" dataKey="oxy" stroke="#ec4899" strokeWidth={3} fill="url(#colorOxy)" name="Bond" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-           </div>
-           
-           <div className="bg-[#111] border border-white/5 rounded-[40px] p-8">
-              <InventoryGrid owner="REB" title="Active Environmental Assets" />
-           </div>
-        </div>
       </div>
 
-      <div className="bg-[#111] border border-white/5 rounded-[40px] p-8 flex items-center justify-between">
-          <div className="flex items-center gap-8 flex-1">
-            <h3 className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">REB Obsession Progression</h3>
-            <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden relative border border-white/5">
-              <div className="bg-blue-600 h-full transition-all duration-1000" style={{ width: `${stats.rebObsession}%` }} />
-            </div>
-            <div className="text-5xl font-black text-white italic tracking-tighter w-32 text-right">{stats.rebObsession}%</div>
-          </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
+           <span className="text-[9px] text-gray-500 uppercase font-black block mb-2">Entropy Flux</span>
+           <div className="text-2xl font-black text-purple-400 italic mono">{stats.entropy}</div>
+        </div>
+        <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
+           <span className="text-[9px] text-gray-500 uppercase font-black block mb-2">Engine Favor</span>
+           <div className="text-2xl font-black text-cyan-400 italic mono">{stats.favor}</div>
+        </div>
+        <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
+           <span className="text-[9px] text-gray-500 uppercase font-black block mb-2">Adrenaline</span>
+           <div className="text-2xl font-black text-blue-400 italic mono">{stats.adr}</div>
+        </div>
+        <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
+           <span className="text-[9px] text-gray-500 uppercase font-black block mb-2">Oxytocin</span>
+           <div className="text-2xl font-black text-pink-400 italic mono">{stats.oxy}</div>
+        </div>
       </div>
     </div>
   );
@@ -215,153 +198,43 @@ const Dashboard: React.FC<DashboardProps> = ({
         />
         <div className="flex-1">
           <h2 className="text-4xl font-black text-white italic tracking-tighter uppercase">{pc?.name || "PC Psychology"}</h2>
-          <p className="text-gray-500 font-medium text-lg uppercase tracking-widest">{pc?.origin || "Central Controller Interface"}</p>
           <div className="mt-4 flex flex-wrap gap-3">
              {pc?.skills?.map((skill, i) => (
                 <span key={i} className="px-3 py-1 bg-orange-500/10 border border-orange-500/20 rounded-full text-[10px] text-orange-400 font-black uppercase italic">
                   {skill}
                 </span>
              ))}
-             <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-black uppercase italic">
-                Wound: {pc?.wound || 'None'}
-             </span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatBox icon={Brain} label="Willpower" value={stats.willpower} color="text-orange-400" desc="Resistance" />
-        <StatBox icon={Activity} label="Clarity" value={stats.clarity} color="text-amber-400" desc="Anchoring" />
-        <StatBox icon={Flame} label="Obsession Progression" value={stats.pcObsession} color="text-orange-600" desc="Desire Intensity" />
-      </div>
-
-      <div className="bg-[#111] border border-white/5 rounded-[40px] p-8">
-         <InventoryGrid owner="PC" title="Relic & Asset Inventory" />
-      </div>
-    </div>
-  );
-
-  const renderNpcView = () => (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-end"><h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">NPC Roster</h2></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {npcs.length === 0 ? (
-          <div className="col-span-full p-20 border border-dashed border-white/5 rounded-[40px] opacity-20 text-center"><Users size={48} className="mb-4" /><p className="font-bold uppercase tracking-widest text-[10px]">No telemetry detected.</p></div>
-        ) : (
-          npcs.map((npc, idx) => (
-            <div key={idx} className="bg-[#111] border border-white/5 p-8 rounded-[40px] group transition-all hover:bg-white/5">
-              <div className="flex items-start gap-6">
-                <PortraitDisplay 
-                  portrait={npc.portrait}
-                  name={npc.name}
-                  role="NPC"
-                  size="lg"
-                  status={npc.status as any}
-                  onRegenerate={onRegeneratePortrait ? () => onRegeneratePortrait(npc.name, "NPC") : undefined}
-                  isGenerating={generatingPortraits.includes(npc.name)}
-                />
-                <div className="flex-1 space-y-2 pt-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-xl font-black text-white italic tracking-tight">{npc.name}</h4>
-                      <p className="text-[10px] text-blue-400 uppercase font-black tracking-tighter">{npc.role}</p>
-                    </div>
-                  </div>
-                  <div className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                    npc.status === 'ACTING' ? 'bg-red-500/10 text-red-400' : 
-                    npc.status === 'WATCHING' ? 'bg-orange-500/10 text-orange-400' : 
-                    'bg-gray-500/10 text-gray-500'
-                  }`}>
-                    {npc.status}
-                  </div>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <ArcTriad role="PC" al={stats.pcAL} aw={stats.pcAW} ob={stats.pcOB} want={pc?.want} need={pc?.need} />
+        
+        <div className="grid grid-cols-1 gap-6">
+          <div className="bg-[#111] p-8 rounded-[40px] border border-white/5 space-y-6">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] text-gray-500 font-black uppercase flex items-center gap-2"><Brain size={14} className="text-orange-400" /> Willpower Drain</span>
+                <span className="text-lg font-black text-white italic mono">{stats.willpower}/10</span>
+              </div>
+              <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                <div className="h-full bg-orange-500 transition-all" style={{ width: `${(stats.willpower / 10) * 100}%` }} />
               </div>
             </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-
-  const renderSituationsView = () => {
-    const active = situations.filter(s => s.status !== 'Resolved');
-    const archive = situations.filter(s => s.status === 'Resolved');
-    return (
-      <div className="space-y-12 animate-in fade-in duration-500">
-        <div className="space-y-8">
-          <div className="flex justify-between items-end">
-            <div>
-              <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">Active Deck</h2>
-              <p className="text-gray-500 font-medium">Current complications influencing the narrative stream.</p>
-            </div>
-            <div className="bg-amber-500/10 border border-amber-500/20 px-6 py-3 rounded-2xl text-amber-500 flex items-center gap-3">
-               <Timer size={18} className="animate-pulse" />
-               <span className="text-lg font-black italic">{situationCountdown} TURNS TO DRIFT</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {active.length === 0 ? (
-              <div className="col-span-full p-20 border border-dashed border-white/5 rounded-[40px] opacity-20 text-center">
-                <Layers size={48} className="mx-auto mb-4" />
-                <p className="font-bold uppercase tracking-widest text-[10px]">No active complications.</p>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] text-gray-500 font-black uppercase flex items-center gap-2"><Eye size={14} className="text-amber-400" /> Narrative Clarity</span>
+                <span className={`text-lg font-black italic mono ${stats.clarity < 30 ? 'text-red-500 animate-pulse' : 'text-white'}`}>{stats.clarity}%</span>
               </div>
-            ) : (
-              active.map((sit) => (
-                <div key={sit.id} className="bg-[#111] border border-white/5 p-8 rounded-[32px] group">
-                  <div className="flex justify-between items-start mb-6">
-                     <div className="p-4 bg-blue-500/10 text-blue-500 rounded-2xl"><Zap size={24} /></div>
-                     <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${sit.status === 'Triggered' ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-white/5 text-gray-500'}`}>{sit.status}</span>
-                  </div>
-                  <h4 className="text-xl font-black text-white uppercase italic tracking-tighter mb-2">{sit.label}</h4>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Trigger: {sit.triggerCondition}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-8 pt-12 border-t border-white/5">
-          <div className="flex items-center gap-4">
-             <Archive size={24} className="text-gray-600" />
-             <h2 className="text-2xl font-black text-gray-600 italic tracking-tighter uppercase">Situation Archive</h2>
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            {archive.length === 0 ? (
-               <div className="p-10 border border-dashed border-white/5 rounded-3xl opacity-10 text-center">
-                  <p className="text-[10px] font-black uppercase">Archive is empty.</p>
-               </div>
-            ) : (
-              archive.map((sit) => (
-                <div key={sit.id} className="bg-[#0d0d0d] border border-white/5 p-6 rounded-2xl flex items-center justify-between group hover:border-gray-500/20 transition-all">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                       <h4 className="text-sm font-black text-gray-400 uppercase italic tracking-tight">{sit.label}</h4>
-                    </div>
-                    <p className="text-[11px] text-gray-600 leading-relaxed italic">{sit.resolutionSummary || "Plot point resolved without synopsis telemetry."}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderAnchorsView = () => (
-    <div className="space-y-8 animate-in zoom-in-95 duration-500">
-      <div className="flex justify-between items-end"><h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">Narrative Anchors</h2></div>
-      <div className="space-y-6">
-        {anchors.length === 0 ? (
-          <div className="p-20 border border-dashed border-white/5 rounded-[40px] opacity-20 text-center"><Milestone size={48} className="mx-auto mb-4" /><p className="font-bold uppercase tracking-widest text-[10px]">No Anchor Points generated.</p></div>
-        ) : (
-          anchors.map((anchor) => (
-            <div key={anchor.id} className="bg-[#111] border border-white/5 p-10 rounded-[40px] flex gap-10 items-center hover:bg-white/5 transition-all">
-              <div className="flex flex-col items-center justify-center p-6 bg-white/5 rounded-3xl min-w-[100px]"><span className="text-[10px] text-gray-500 font-black uppercase mb-1">Act {anchor.act}</span><span className="text-3xl font-black text-white italic tracking-tighter">W{anchor.week}</span></div>
-              <div className="flex-1"><div className="flex items-center gap-3 mb-3"><h4 className="text-2xl font-black text-white uppercase tracking-tight italic">{anchor.label}</h4><span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${anchor.dominantForce === 'PC' ? 'text-orange-500 bg-orange-500/10' : 'text-blue-500 bg-blue-500/10'}`}>{anchor.dominantForce} Dominance</span></div><p className="text-sm text-gray-400 max-w-3xl leading-relaxed italic border-l-2 border-white/10 pl-6 py-1">"{anchor.description}"</p><div className="mt-6 flex items-center gap-4"><div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{ width: `${anchor.obsessionAtTime}%` }} /></div><span className="text-[10px] font-black text-gray-600 uppercase">Obsession Flux: {anchor.obsessionAtTime}%</span></div></div>
+              <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                <div className="h-full bg-amber-500 transition-all" style={{ width: `${stats.clarity}%` }} />
+              </div>
+              {stats.clarity < 30 && <p className="text-[9px] text-red-500 font-black uppercase animate-pulse">Critical: Sensor Unreliability Probable</p>}
             </div>
-          ))
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -371,9 +244,38 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="max-w-6xl mx-auto pb-20">
         {view === 'reb' && renderRebView()}
         {view === 'pc' && renderPcView()}
-        {view === 'npcs' && renderNpcView()}
-        {view === 'situations' && renderSituationsView()}
-        {view === 'anchors' && renderAnchorsView()}
+        {view === 'npcs' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {npcs.map((npc, idx) => (
+              <div key={idx} className="bg-[#111] border border-white/5 p-8 rounded-[40px] flex items-start gap-6">
+                <PortraitDisplay portrait={npc.portrait} name={npc.name} role="NPC" status={npc.status as any} size="lg" />
+                <div className="pt-2">
+                  <h4 className="text-xl font-black text-white italic tracking-tight">{npc.name}</h4>
+                  <p className="text-[10px] text-blue-400 uppercase font-black mb-4">{npc.role}</p>
+                  <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${npc.status === 'ACTING' ? 'bg-red-500/10 text-red-400' : 'bg-gray-500/10 text-gray-500'}`}>
+                    {npc.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {view === 'anchors' && (
+          <div className="space-y-6">
+            {anchors.map((anchor) => (
+              <div key={anchor.id} className="bg-[#111] border border-white/5 p-10 rounded-[40px] flex gap-10 items-center">
+                <div className="p-6 bg-white/5 rounded-3xl min-w-[100px] text-center">
+                  <span className="text-[10px] text-gray-500 font-black uppercase">W{anchor.week}</span>
+                  <div className="text-2xl font-black text-white italic">ACT {anchor.act}</div>
+                </div>
+                <div>
+                  <h4 className="text-2xl font-black text-white uppercase italic mb-2">{anchor.label}</h4>
+                  <p className="text-sm text-gray-400 italic">"{anchor.description}"</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

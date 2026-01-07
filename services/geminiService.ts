@@ -20,22 +20,6 @@ export class GeminiService {
     this.chat = null; 
   }
 
-  // Deprecated: Chat is now initialized per-request to ensure sync with React state
-  private initChat() {
-    if (!this.chat) {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      this.chat = ai.chats.create({
-        model: MODEL_NAME,
-        config: {
-          systemInstruction: this.systemInstruction,
-          temperature: 0.9,
-          topP: 0.95,
-        },
-      });
-    }
-    return this.chat;
-  }
-
   validateResponse(text: string) {
     const violations = this.illegalTerms.filter(term => 
       text.toLowerCase().includes(term.toLowerCase())
@@ -72,19 +56,19 @@ export class GeminiService {
       ${history.map(m => `[${m.role.toUpperCase()}] ${m.content}`).join('\n')}
       
       TASK: Reconstruct the current simulation state via telemetry tags.
-      IMPORTANT: If profile data (Name, Wound, Temperament, Drive, Origin) for PC or REB is not explicitly found, INFER it from the character behavior and context.
+      AUDIT FOCUS: Look for mentions of characters like Marcus, Sasha, or any defined identities.
       
       OUTPUT REQUIREMENTS:
-      1. One <!-- PROFILE|PC:{"name":"...","origin":"...","wound":"...","drive":"...","skills":["..."]} --> tag.
-      2. One <!-- PROFILE|REB:{"name":"...","origin":"...","wound":"...","temperament":"...","drive":"..."} --> tag.
+      1. One <!-- CHAR|PC:[name]|O:[origin]|W:[wound]|D:[drive]|S:[skills] --> tag.
+      2. One <!-- CHAR|REB:[name]|O:[origin]|T:[temperament]|W:[wound]|D:[drive] --> tag.
       3. One <!-- Δ ... --> tag for the current accumulated stats.
-      4. Standard tags for all NPCs (<!-- NPC|[Role]:[Name]|[Status] -->) and Inventory items found.
+      4. Standard tags for all NPCs (<!-- NPC|[Role]:[Name]|[Status] -->).
       
       Output ONLY the raw HTML comment tags. No explanation.
     `;
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview', // Use pro for complex state reconstruction
+        model: 'gemini-3-pro-preview', 
         contents: [{ parts: [{ text: prompt }] }],
         config: { systemInstruction: "You are the REB STATE RECONSTRUCTOR. Your goal is to fill the dashboard with missing profile data by auditing the history. If you don't find a name, invent a thematic one based on the context." },
       });
@@ -108,8 +92,7 @@ export class GeminiService {
   async sendMessageStream(message: string, history: Message[] = []) {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // Reconstruct history to ensure the model sees the full narrative thread.
-    // We filter out meta-messages (system logs) to keep the narrative context pure.
+    // History Hydration Protocol: Ensure the model always sees the narrative thread
     const historyContent: Content[] = history
       .filter(m => !m.isMeta)
       .map(m => ({
@@ -117,9 +100,6 @@ export class GeminiService {
         parts: [{ text: m.content }]
       }));
 
-    // Always create a fresh chat instance with the provided history.
-    // This prevents "Memory: CLEAN / EMPTY" errors if the local Chat object was lost 
-    // due to reload or component unmounting.
     this.chat = ai.chats.create({
       model: MODEL_NAME,
       history: historyContent,
