@@ -1,11 +1,12 @@
 
 import React, { useRef } from 'react';
-import { Layout, MessageSquare, Settings as SettingsIcon, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Loader2, Clock, Map, Flame, Layers as SituationIcon } from 'lucide-react';
+import { Layout, MessageSquare, Settings as SettingsIcon, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Loader2, Clock, Map, Film, Flame, Layers as SituationIcon } from 'lucide-react';
 
 interface SidebarProps {
   currentView: 'chat' | 'context' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations' | 'meta';
   setView: (view: any) => void;
   stats: any;
+  violationCount?: number;
   anchorCount: number;
   npcCount: number;
   sitCount: number;
@@ -20,7 +21,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  currentView, setView, stats, anchorCount, npcCount, sitCount, isExporting, 
+  currentView, setView, stats, violationCount = 0, anchorCount, npcCount, sitCount, isExporting, 
   cruxReady, situationAdvisory, onTriggerCrux, onDrawSituation, onExport, onImport, onClear 
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +174,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
           
+          {violationCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 mb-3 bg-amber-500/10 rounded-lg border border-amber-500/20 animate-pulse">
+              <ShieldAlert size={14} className="text-amber-500" />
+              <span className="text-[9px] text-amber-400 font-bold uppercase tracking-tighter">
+                {violationCount} Physics Override{violationCount > 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <span className="text-[9px] text-gray-500 uppercase font-black">Force Balance</span>

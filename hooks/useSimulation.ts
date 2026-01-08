@@ -2,11 +2,12 @@
 import { useContext, useCallback } from 'react';
 import { SimulationContext } from '../context/SimulationContext';
 import { processLLMResponse, ProcessResult as BaseProcessResult } from '../services/narrativeProcessor';
-import { validateDelta, ValidationResult } from '../validation/validator';
-import { SimulationAction } from '../state/actions';
+import { validateDelta } from '../validation/validator';
+import { RawDelta } from '../validation/parser';
 
 export interface ProcessResult extends BaseProcessResult {
   violations: any[];
+  appliedDelta: RawDelta | null;
 }
 
 export function useSimulation() {
@@ -24,12 +25,14 @@ export function useSimulation() {
     // 2. Call narrative processor
     const result = processLLMResponse(responseText, state, dispatch);
     
-    // 3. Extract violations if valid
-    const violations = (validation as any).violations || [];
+    // 3. Extract violations and appliedDelta if valid
+    const violations = validation.valid ? (validation as any).violations : [];
+    const appliedDelta = validation.valid ? (validation as any).appliedDelta : null;
     
     return {
       ...result,
-      violations
+      violations,
+      appliedDelta
     };
   }, [state, dispatch]);
 

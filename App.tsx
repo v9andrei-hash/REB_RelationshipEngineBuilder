@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef } from 'react';
 import { gemini } from './services/geminiService';
 import { Message, SystemLogEntry } from './types';
@@ -13,6 +12,7 @@ import { selectDashboardStats, selectCruxReadiness, selectSituationSuggestion } 
 import { createInitialState } from './state/initial';
 import { routeOutput } from './services/outputRouter';
 import { checkSemanticDrift } from './services/semanticValidator';
+import { checkCoherence, formatCoherenceWarning } from './services/coherenceValidator';
 
 const AppContent: React.FC = () => {
   const [view, setView] = useState<'chat' | 'settings' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations'>('settings');
@@ -21,8 +21,9 @@ const AppContent: React.FC = () => {
   const [systemContext, setSystemContext] = useState<string>('');
   const [isCaching, setIsCaching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [violationCount, setViolationCount] = useState(0);
   
-  // Track physics corrections for the next turn
+  // Track physics and coherence corrections for the next turn
   const pendingCorrectionsRef = useRef<string[]>([]);
   
   const { state, applyRawResponse, dispatch } = useSimulation();
@@ -40,7 +41,7 @@ const AppContent: React.FC = () => {
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isProcessing) return;
     
-    // Prep message with any pending corrections from the previous turn's physics override
+    // STEP 3: INJECT corrections into user input for the LLM
     let finalInputText = text;
     if (pendingCorrectionsRef.current.length > 0) {
       const correctionBlock = pendingCorrectionsRef.current.map(c => `[ENGINE: ${c}]`).join('\n');
@@ -48,6 +49,7 @@ const AppContent: React.FC = () => {
       pendingCorrectionsRef.current = []; // Clear after injection
     }
     
+    // newUserMessage uses original text for UI display
     const newUserMessage: Message = { role: 'user', content: text };
     setMessages(prev => [...prev, newUserMessage]);
     setIsProcessing(true);
@@ -57,6 +59,7 @@ const AppContent: React.FC = () => {
       let fullResponse = "";
       let usageMetadata: any = null;
       
+      // STEP 4: CRITICAL - Use finalInputText, not text, when calling sendMessageStream
       const streamResponse = await gemini.sendMessageStream(finalInputText, messages);
 
       setMessages(prev => [...prev, { role: 'model', content: '' }]);
@@ -80,7 +83,8 @@ const AppContent: React.FC = () => {
       const routed = routeOutput(fullResponse);
       
       // 2. Process Telemetry (Physics)
-      const { errors, extractedTags, violations } = applyRawResponse(fullResponse);
+      const validation = applyRawResponse(fullResponse);
+      const { errors, extractedTags, violations } = validation;
 
       // 3. Handle Violations (Physics Overrides)
       if (violations && violations.length > 0) {
@@ -90,7 +94,7 @@ const AppContent: React.FC = () => {
           const msg = `Physics Override: ${v.stat} requested ${requestedStr}, applied ${appliedStr}. Reason: ${v.message}`;
           addLog('warning', 'validator', msg);
           
-          // Queue for next turn coherence
+          // STEP 1: ADD physics corrections to queue for next turn
           pendingCorrectionsRef.current.push(`${v.stat} was clamped to ${appliedStr} due to engine constraints.`);
         });
       }
@@ -103,7 +107,32 @@ const AppContent: React.FC = () => {
       // 5. Semantic Validation (Only on prose)
       const driftWarnings = checkSemanticDrift(routed.simulation, state);
 
-      // 6. Update Logs
+      // 6. Coherence Validation (Narrative vs Applied Delta)
+      const coherenceWarnings = validation.appliedDelta 
+        ? checkCoherence(routed.simulation, validation.appliedDelta)
+        : [];
+
+      // Update total violation count for sidebar display (Physics + Coherence)
+      setViolationCount((violations?.length || 0) + coherenceWarnings.length);
+
+      coherenceWarnings.forEach(w => {
+        addLog(
+          w.severity === 'high' ? 'error' : 'warning',
+          'validator',
+          formatCoherenceWarning(w)
+        );
+      });
+
+      // STEP 2: Queue high-severity coherence corrections for next turn
+      if (coherenceWarnings.length > 0) {
+        coherenceWarnings
+          .filter(w => w.severity === 'high')
+          .forEach(w => {
+            pendingCorrectionsRef.current.push(w.suggestion);
+          });
+      }
+
+      // 7. Update Logs
       if (routed.systemLog) addLog('meta', 'llm', routed.systemLog);
       errors.forEach(err => addLog('error', 'validator', err));
       driftWarnings.forEach(w => addLog('warning', 'validator', `[${w.type.toUpperCase()}] ${w.message}`));
@@ -125,8 +154,16 @@ const AppContent: React.FC = () => {
           meta: routed.systemLog,
           hiddenStats: extractedTags.join('\n'),
           compliance: { 
-            isPassed: errors.length === 0 && driftWarnings.length === 0, 
-            violations: [...errors, ...driftWarnings.map(w => w.message)] 
+            isPassed: errors.length === 0 && 
+                      driftWarnings.length === 0 && 
+                      coherenceWarnings.length === 0,
+            violations: [
+              ...errors, 
+              ...driftWarnings.map(w => w.message),
+              ...coherenceWarnings
+                .filter(w => w.severity === 'high')
+                .map(formatCoherenceWarning)
+            ] 
           }
         }];
       });
@@ -152,6 +189,7 @@ const AppContent: React.FC = () => {
       setView('settings');
       pendingCorrectionsRef.current = [];
       addLog('warning', 'app', 'System reset initiated. State purged.');
+      setViolationCount(0);
     }
   };
 
@@ -160,7 +198,7 @@ const AppContent: React.FC = () => {
   const situationAdvisory = selectSituationSuggestion(state);
 
   return (
-    <div className="flex h-screen w-full bg-[#0a0a0a] overflow-hidden text-sm">
+    <div className="flex h-screen w-full bg-[#0a0a0a] overflow-hidden text-sm relative">
       <Sidebar 
         currentView={view === 'settings' ? 'context' : view} 
         setView={(v) => setView(v === 'context' ? 'settings' : v)} 
@@ -169,6 +207,7 @@ const AppContent: React.FC = () => {
           pcOB: state.pc.obsession,
           tokens: (dashboardStats.inputTokens || 0) + (dashboardStats.outputTokens || 0)
         }} 
+        violationCount={violationCount}
         anchorCount={state.anchors?.length || 0} 
         npcCount={Object.keys(state.npcs || {}).length} 
         sitCount={state.situations?.length || 0}
@@ -183,23 +222,25 @@ const AppContent: React.FC = () => {
       
       <main className="flex-1 flex overflow-hidden">
         {view === 'settings' && (
-          <SettingsPanel 
-            currentPrompt={systemContext}
-            isCaching={isCaching}
-            onPromptUpdate={async (c) => {
-              setIsCaching(true);
-              addLog('info', 'app', 'Caching new protocol set...');
-              await gemini.setSystemInstruction(c);
-              setSystemContext(c);
-              setIsCaching(false);
-              addLog('info', 'app', 'Engine ready. System context initialized.');
-              setView('chat');
-            }}
-          />
+          <div className="flex-1 flex flex-col relative">
+            <SettingsPanel 
+              currentPrompt={systemContext}
+              isCaching={isCaching}
+              onPromptUpdate={async (c) => {
+                setIsCaching(true);
+                addLog('info', 'app', 'Caching new protocol set...');
+                await gemini.setSystemInstruction(c);
+                setSystemContext(c);
+                setIsCaching(false);
+                addLog('info', 'app', 'Engine ready. System context initialized.');
+                setView('chat');
+              }}
+            />
+          </div>
         )}
 
         {view === 'chat' && (
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 flex overflow-hidden">
             <SimulationTerminal 
               messages={messages} 
               onSend={handleSendMessage} 
