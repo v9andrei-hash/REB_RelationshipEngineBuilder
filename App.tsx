@@ -79,6 +79,27 @@ const AppContent: React.FC = () => {
         });
       }
 
+      // Suppress auto-generated CRUX (user must initiate)
+      if (fullResponse.includes('<!-- CRUX|') && 
+          !text.toLowerCase().includes('(crux)')) {
+        
+        // LLM auto-generated CRUX despite prompt - strip it
+        fullResponse = fullResponse.replace(/<!--\s*CRUX\|[^>]*-->/gi, '');
+        
+        // Also remove any formatted CRUX presentation
+        fullResponse = fullResponse.replace(/\*\*CRUX:[^*]+\*\*/g, '');
+        fullResponse = fullResponse.replace(/\[Option [ABC]\]:[^\n]+/g, '');
+        
+        // Log the violation
+        addLog('error', 'validator', 
+          '⛔ CRUX auto-generated. Removed. User must trigger via (CRUX) command.');
+        
+        // Queue correction for next turn
+        pendingCorrectionsRef.current.push(
+          'Do not auto-generate CRUX moments. Wait for user to send (CRUX) command. Continue narrative instead.'
+        );
+      }
+
       // 1. Route the Output (Separate prose, OOC, and meta)
       const routed = routeOutput(fullResponse);
       
@@ -87,16 +108,24 @@ const AppContent: React.FC = () => {
       const { errors, extractedTags, violations } = validation;
 
       // 3. Handle Violations (Physics Overrides)
+      // Queue violations for next turn correction
       if (violations && violations.length > 0) {
         violations.forEach(v => {
-          const requestedStr = v.requested !== undefined ? (v.requested >= 0 ? `+${v.requested}` : v.requested) : '?';
-          const appliedStr = v.applied !== undefined ? (v.applied >= 0 ? `+${v.applied}` : v.applied) : '?';
-          const msg = `Physics Override: ${v.stat} requested ${requestedStr}, applied ${appliedStr}. Reason: ${v.message}`;
-          addLog('warning', 'validator', msg);
-          
-          // STEP 1: ADD physics corrections to queue for next turn
-          pendingCorrectionsRef.current.push(`${v.stat} was clamped to ${appliedStr} due to engine constraints.`);
+          const correction = `${v.stat} was clamped to ${v.applied} due to engine constraints (you attempted ${v.requested}). ${v.message}`;
+          pendingCorrectionsRef.current.push(correction);
         });
+        
+        // Log each violation
+        violations.forEach(v => {
+          addLog('warning', 'validator', 
+            `Physics Override: ${v.stat} requested ${v.requested}, applied ${v.applied}. Reason: ${v.message}`
+          );
+        });
+        
+        // Update violation count for Sidebar (will be adjusted later with coherence warnings)
+        setViolationCount(violations.length);
+      } else {
+        setViolationCount(0);
       }
 
       // 4. Log Delta Display
@@ -123,7 +152,7 @@ const AppContent: React.FC = () => {
         );
       });
 
-      // STEP 2: Queue high-severity coherence corrections for next turn
+      // Queue high-severity coherence corrections for next turn
       if (coherenceWarnings.length > 0) {
         coherenceWarnings
           .filter(w => w.severity === 'high')
