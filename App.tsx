@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+
+import React, { useState, useCallback, useRef } from 'react';
 import { gemini } from './services/geminiService';
 import { Message, SystemLogEntry } from './types';
 import Sidebar from './components/Sidebar';
@@ -21,6 +22,9 @@ const AppContent: React.FC = () => {
   const [isCaching, setIsCaching] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Track physics corrections for the next turn
+  const pendingCorrectionsRef = useRef<string[]>([]);
+  
   const { state, applyRawResponse, dispatch } = useSimulation();
 
   const addLog = useCallback((type: SystemLogEntry['type'], source: SystemLogEntry['source'], message: string) => {
@@ -36,6 +40,14 @@ const AppContent: React.FC = () => {
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isProcessing) return;
     
+    // Prep message with any pending corrections from the previous turn's physics override
+    let finalInputText = text;
+    if (pendingCorrectionsRef.current.length > 0) {
+      const correctionBlock = pendingCorrectionsRef.current.map(c => `[ENGINE: ${c}]`).join('\n');
+      finalInputText = `${correctionBlock}\n\n${text}`;
+      pendingCorrectionsRef.current = []; // Clear after injection
+    }
+    
     const newUserMessage: Message = { role: 'user', content: text };
     setMessages(prev => [...prev, newUserMessage]);
     setIsProcessing(true);
@@ -45,7 +57,7 @@ const AppContent: React.FC = () => {
       let fullResponse = "";
       let usageMetadata: any = null;
       
-      const streamResponse = await gemini.sendMessageStream(text, messages);
+      const streamResponse = await gemini.sendMessageStream(finalInputText, messages);
 
       setMessages(prev => [...prev, { role: 'model', content: '' }]);
 
@@ -68,12 +80,30 @@ const AppContent: React.FC = () => {
       const routed = routeOutput(fullResponse);
       
       // 2. Process Telemetry (Physics)
-      const { errors, extractedTags } = applyRawResponse(fullResponse);
+      const { errors, extractedTags, violations } = applyRawResponse(fullResponse);
 
-      // 3. Semantic Validation (Only on prose)
+      // 3. Handle Violations (Physics Overrides)
+      if (violations && violations.length > 0) {
+        violations.forEach(v => {
+          const requestedStr = v.requested !== undefined ? (v.requested >= 0 ? `+${v.requested}` : v.requested) : '?';
+          const appliedStr = v.applied !== undefined ? (v.applied >= 0 ? `+${v.applied}` : v.applied) : '?';
+          const msg = `Physics Override: ${v.stat} requested ${requestedStr}, applied ${appliedStr}. Reason: ${v.message}`;
+          addLog('warning', 'validator', msg);
+          
+          // Queue for next turn coherence
+          pendingCorrectionsRef.current.push(`${v.stat} was clamped to ${appliedStr} due to engine constraints.`);
+        });
+      }
+
+      // 4. Log Delta Display
+      if (routed.deltaDisplay) {
+        addLog('info', 'parser', routed.deltaDisplay);
+      }
+
+      // 5. Semantic Validation (Only on prose)
       const driftWarnings = checkSemanticDrift(routed.simulation, state);
 
-      // 4. Update Logs
+      // 6. Update Logs
       if (routed.systemLog) addLog('meta', 'llm', routed.systemLog);
       errors.forEach(err => addLog('error', 'validator', err));
       driftWarnings.forEach(w => addLog('warning', 'validator', `[${w.type.toUpperCase()}] ${w.message}`));
@@ -101,8 +131,6 @@ const AppContent: React.FC = () => {
         }];
       });
       
-      addLog('info', 'parser', `Transmission processed. Tags found: ${extractedTags.length}`);
-
     } catch (error: any) {
       addLog('error', 'app', `Engine error: ${error.message || 'Connection severed.'}`);
       setMessages(prev => [...prev, { role: 'model', content: "Engine error: Connection severed." }]);
@@ -122,6 +150,7 @@ const AppContent: React.FC = () => {
       gemini.setSystemInstruction('');
       setSystemContext('');
       setView('settings');
+      pendingCorrectionsRef.current = [];
       addLog('warning', 'app', 'System reset initiated. State purged.');
     }
   };

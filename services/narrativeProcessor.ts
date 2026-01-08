@@ -1,3 +1,4 @@
+
 import { Dispatch } from 'react';
 import { SimulationAction } from '../state/actions';
 import { SimulationState } from '../types/simulation';
@@ -9,6 +10,7 @@ export interface ProcessResult {
   cleanText: string;
   errors: string[];
   extractedTags: string[];
+  violations: any[];
 }
 
 const VALID_TIERS: ConflictTier[] = ['INT', 'PER', 'EXT', 'INT_PER', 'PER_EXT', 'INT_EXT', 'INT_PER_EXT'];
@@ -43,9 +45,11 @@ export function processLLMResponse(
   if (validation.valid === false) {
     errors.push(...validation.errors.map(e => e.message));
   } else if (validation.valid === true && validation.delta !== null) {
+    // USE THE APPLIED (CLAMPED) DELTA FOR STATE INTEGRITY
     dispatch({ 
       type: 'APPLY_DELTA', 
-      payload: validation.delta, 
+      payload: validation.appliedDelta || validation.delta, 
+      violations: (validation as any).violations,
       thresholdEvents: validation.thresholdEvents 
     });
   }
@@ -168,5 +172,10 @@ export function processLLMResponse(
   // Strip all tags for the UI
   const cleanText = responseText.replace(/<!--[\s\S]*?-->/g, '').trim();
 
-  return { cleanText, errors, extractedTags };
+  return { 
+    cleanText, 
+    errors, 
+    extractedTags, 
+    violations: (validation as any).violations || [] 
+  };
 }

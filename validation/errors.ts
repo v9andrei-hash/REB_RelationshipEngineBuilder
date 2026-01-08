@@ -11,4 +11,7 @@ export interface ValidationError {
   value?: number;
   limit?: number;
   message: string;
+  // New fields for desync feedback
+  requested?: number;
+  applied?: number;
 }

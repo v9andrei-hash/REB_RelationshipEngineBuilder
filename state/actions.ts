@@ -1,5 +1,7 @@
+
 import { RawDelta } from '../validation/parser';
 import { ThresholdEvent } from '../validation/thresholds';
+import { ValidationError } from '../validation/errors';
 import { ConflictTier, CruxDefinition } from '../types/conflict';
 import { RelationshipConfiguration } from '../types/configuration';
 import { Situation } from '../types';
@@ -7,7 +9,12 @@ import { SimulationState, WorldState, PlayerCharacter, RebCharacter } from '../t
 
 export type SimulationAction =
   | { type: 'INITIALIZE'; payload: SimulationState }
-  | { type: 'APPLY_DELTA'; payload: RawDelta; thresholdEvents: ThresholdEvent[] }
+  | { 
+      type: 'APPLY_DELTA'; 
+      payload: RawDelta; 
+      violations?: ValidationError[]; 
+      thresholdEvents: ThresholdEvent[] 
+    }
   | { type: 'CRUX_TRIGGERED'; definition: CruxDefinition }
   | { type: 'CRUX_RESOLVED'; path: 'WANT' | 'NEED' }
   | { type: 'CRUX_AVOIDED' }

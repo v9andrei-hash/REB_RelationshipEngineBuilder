@@ -4,6 +4,7 @@ export interface RoutedOutput {
   simulationOOC: string;   // [OOC] content
   systemLog: string;       // [META] content
   hidden: string[];        // <!-- --> tags for parsing
+  deltaDisplay?: string;   // Formatted delta for System Log
 }
 
 export function routeOutput(rawResponse: string): RoutedOutput {
@@ -41,11 +42,63 @@ export function routeOutput(rawResponse: string): RoutedOutput {
       simulation.push(line);
     }
   }
+
+  // Format delta for display
+  const deltaTag = hidden.find(h => h.includes('Δ'));
+  let deltaDisplay: string | undefined;
+  
+  if (deltaTag) {
+    deltaDisplay = formatDeltaForDisplay(deltaTag);
+  }
   
   return { 
     simulation: simulation.join('\n').trim(), 
     simulationOOC: simulationOOC.join('\n').trim(),
     systemLog: systemLog.join('\n').trim(),
-    hidden 
+    hidden,
+    deltaDisplay
   };
+}
+
+function formatDeltaForDisplay(deltaTag: string): string {
+  // Extract content from tag: <!-- Δ Ar+15 Ox-8 Fv+5 En-10 PC_AL-5 PC_AW+3 PC_OB+8 REB_AL+2 REB_AW+0 REB_OB+5 VT:TB+20 -->
+  const content = deltaTag.replace('<!--', '').replace('-->', '').trim();
+  const parts = content.split(/\s+/).filter(p => p && p !== 'Δ');
+  
+  const bondMatrix: string[] = [];
+  const pcStats: string[] = [];
+  const rebStats: string[] = [];
+  let valueTurn = '';
+  
+  const formatVal = (val: string) => {
+    const num = parseInt(val.match(/[+-]?\d+/)?.[0] || '0');
+    return num >= 0 ? `+${num}` : `${num}`;
+  };
+
+  const getKeyVal = (part: string) => {
+    const match = part.match(/([A-Z_]+):?([+-]?\d+)/i);
+    if (!match) return { key: part, val: '' };
+    return { key: match[1], val: formatVal(match[2]) };
+  };
+
+  for (const part of parts) {
+    const { key, val } = getKeyVal(part);
+    if (['Ar', 'Ox', 'Fv', 'En'].includes(key)) {
+      bondMatrix.push(`${key}${val}`);
+    } else if (key.startsWith('PC_')) {
+      pcStats.push(`${key.replace('PC_', '')}${val}`);
+    } else if (key.startsWith('REB_')) {
+      rebStats.push(`${key.replace('REB_', '')}${val}`);
+    } else if (key === 'VT') {
+      valueTurn = part.replace('VT:', '');
+    }
+  }
+  
+  return [
+    `ΔELTA UPDATE`,
+    `Bond: ${bondMatrix.join(' | ')}`,
+    `PC: ${pcStats.join(' | ')}`,
+    `Reb: ${rebStats.join(' | ')}`,
+    valueTurn ? `Value Turn: ${valueTurn}` : ''
+  ].filter(Boolean).join('\n');
 }
