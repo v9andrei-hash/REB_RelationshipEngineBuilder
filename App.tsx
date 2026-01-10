@@ -79,26 +79,73 @@ const AppContent: React.FC = () => {
         });
       }
 
-      // Suppress auto-generated CRUX (user must initiate)
+      // Fix LLM delta tag formatting mistakes
+      if (fullResponse.includes('<!--') && fullResponse.includes('Δ')) {
+        let deltaFixed = false;
+        
+        // Fix Unicode arrow → to proper HTML comment closing -->
+        if (fullResponse.includes('→')) {
+          fullResponse = fullResponse.replace(/→/g, '-->');
+          deltaFixed = true;
+          addLog('warning', 'parser', '⚠️ Auto-fixed: Unicode arrow (→) replaced with (-->)');
+        }
+        
+        // Fix malformed stat values like Fv+1- or Ar-5+
+        const malformedStats = fullResponse.match(/\b(Ar|Ox|Fv|En|PC_AL|PC_AW|PC_OB|REB_AL|REB_AW|REB_OB)([+-])(\d+)([+-])/g);
+        if (malformedStats) {
+          malformedStats.forEach(stat => {
+            const match = stat.match(/(\w+)([+-])(\d+)/);
+            if (match) {
+              const [_, name, sign, value] = match;
+              const corrected = `${name}${sign}${value}`;
+              fullResponse = fullResponse.replace(stat, corrected);
+              addLog('warning', 'parser', `⚠️ Auto-fixed: ${stat} → ${corrected}`);
+              deltaFixed = true;
+            }
+          });
+        }
+        
+        // Correct LLM so it stops making these mistakes
+        if (deltaFixed) {
+          pendingCorrectionsRef.current.push(
+            'FORMAT ERROR: Close delta tags with --> (two hyphens, right angle bracket), NOT → (Unicode arrow). Stat values need one sign only: Fv+15 not Fv+1-.'
+          );
+        }
+      }
+
+      // Suppress auto-generated CRUX
+      let cruxWasStripped = false;
       if (fullResponse.includes('<!-- CRUX|') && 
           !text.toLowerCase().includes('(crux)')) {
         
-        // LLM auto-generated CRUX despite prompt - strip it
+        cruxWasStripped = true;
+        
         fullResponse = fullResponse.replace(/<!--\s*CRUX\|[^>]*-->/gi, '');
+        fullResponse = fullResponse.replace(/\*\*CRUX:[^*]+\*\*/gi, '');
+        fullResponse = fullResponse.replace(/\*\*RULE VIOLATIONS:[^*]+\*\*/gi, '');
+        fullResponse = fullResponse.replace(/\[Option [ABC]\]:[^\n]+/gi, '');
+        fullResponse = fullResponse.replace(/\+\+[^\n]+/g, '');
+        fullResponse = fullResponse.replace(/\*\s*\+\+[^\n]+/g, '');
+        fullResponse = fullResponse.replace(/RULE VIOLATIONS:[\s\S]*?(?=\n\n|$)/gi, '');
         
-        // Also remove any formatted CRUX presentation
-        fullResponse = fullResponse.replace(/\*\*CRUX:[^*]+\*\*/g, '');
-        fullResponse = fullResponse.replace(/\[Option [ABC]\]:[^\n]+/g, '');
-        
-        // Log the violation
         addLog('error', 'validator', 
           '⛔ CRUX auto-generated. Removed. User must trigger via (CRUX) command.');
         
-        // Queue correction for next turn
         pendingCorrectionsRef.current.push(
-          'Do not auto-generate CRUX moments. Wait for user to send (CRUX) command. Continue narrative instead.'
+          'Do not auto-generate CRUX even in high-stakes situations. Wait for (CRUX) command. Continue narrative naturally.'
         );
       }
+
+      // Update displayed message with cleaned response
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        return [...prev.slice(0, -1), { 
+          ...last, 
+          content: fullResponse,
+          // @ts-ignore
+          _cleaned: cruxWasStripped 
+        }];
+      });
 
       // 1. Route the Output (Separate prose, OOC, and meta)
       const routed = routeOutput(fullResponse);
