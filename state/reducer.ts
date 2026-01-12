@@ -170,30 +170,6 @@ export function simulationReducer(
         }
       };
 
-    case 'SITUATION_DRAWN':
-      return {
-        ...state,
-        situations: [
-          ...state.situations,
-          {
-            id: action.situation.id,
-            label: action.situation.label,
-            status: 'TRIGGERED' as const,
-            triggerCondition: action.situation.triggerCondition
-          }
-        ]
-      };
-
-    case 'SITUATION_RESOLVED':
-      return {
-        ...state,
-        situations: state.situations.map(s =>
-          s.label === action.label
-            ? { ...s, status: 'RESOLVED' as const, resolutionSummary: action.synopsis }
-            : s
-        )
-      };
-
     case 'NPC_STATUS_CHANGED': {
       const existing = state.npcs[action.npcName] || {
         name: action.npcName,
@@ -241,6 +217,15 @@ export function simulationReducer(
         ...state,
         inputTokens: action.inputTokens,
         outputTokens: state.outputTokens + action.outputTokens
+      };
+
+    case 'UPDATE_MECHANICS':
+      return {
+        ...state,
+        optionalMechanics: {
+          enabled: action.payload.enabled,
+          ...action.payload.data
+        }
       };
 
     default:

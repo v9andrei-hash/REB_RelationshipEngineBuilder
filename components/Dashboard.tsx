@@ -2,19 +2,17 @@
 import React from 'react';
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid, AreaChart, Area, ReferenceLine, ReferenceArea } from 'recharts';
 import { Zap, TrendingUp, Shield, Thermometer, Activity, Users, Layers, Timer, Milestone, Brain, Flame, ArrowUpRight, Crosshair, Package, Archive, Box, Star, Eye, Target, Link, Map, Film, ShieldAlert, Clock } from 'lucide-react';
-import { NPCState, SituationState, AnchorPoint, SceneSnapshot, Item, PlayerCharacter, RebCharacter, ConfigurationType, WorldState, PressureSource } from '../types';
+import { NPCState, AnchorPoint, SceneSnapshot, Item, PlayerCharacter, RebCharacter, ConfigurationType, WorldState, PressureSource } from '../types';
 import PortraitDisplay from './PortraitDisplay';
 
 interface DashboardProps {
-  view: 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations';
+  view: 'reb' | 'pc' | 'world' | 'anchors' | 'npcs';
   stats: any;
   anchors: AnchorPoint[];
   npcs: any[];
-  situations: SituationState[];
   inventory: Item[];
   sceneHistory: SceneSnapshot[];
   lastDelta?: string;
-  situationCountdown?: number;
   pc?: PlayerCharacter | null;
   reb?: RebCharacter | null;
   world?: WorldState;
@@ -26,8 +24,8 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
-  view, stats, anchors, npcs, situations, inventory, sceneHistory, lastDelta, 
-  situationCountdown = 5, pc, reb, world, pressures = [], currentQuadrant, configuration, onRegeneratePortrait, generatingPortraits = [] 
+  view, stats, anchors, npcs, inventory, sceneHistory, lastDelta, 
+  pc, reb, world, pressures = [], currentQuadrant, configuration, onRegeneratePortrait, generatingPortraits = [] 
 }) => {
 
   const tensionPoint = [
@@ -395,31 +393,6 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
             ))}
           </div>
-        )}
-        {view === 'situations' && (
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             {situations.length === 0 ? (
-                <div className="col-span-full h-64 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] opacity-20">
-                  <Layers size={48} className="mb-4" />
-                  <p className="text-xs font-black uppercase">Situation deck uninitialized</p>
-                </div>
-             ) : situations.map((sit) => (
-               <div key={sit.id} className="bg-[#111] border border-white/5 p-8 rounded-[40px] relative overflow-hidden group">
-                 <div className="flex justify-between items-center mb-4">
-                   <h4 className="text-lg font-black text-white italic uppercase tracking-tighter">{sit.label}</h4>
-                   <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${sit.status === 'TRIGGERED' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : sit.status === 'RESOLVED' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-gray-500/10 text-gray-500 border border-white/5'}`}>
-                     {sit.status}
-                   </span>
-                 </div>
-                 <p className="text-[10px] text-gray-500 mb-4 font-bold uppercase tracking-widest">Trigger: {sit.triggerCondition}</p>
-                 {sit.resolutionSummary && (
-                   <div className="mt-4 pt-4 border-t border-white/5">
-                     <p className="text-xs text-blue-300 italic font-medium leading-relaxed">Result: {sit.resolutionSummary}</p>
-                   </div>
-                 )}
-               </div>
-             ))}
-           </div>
         )}
       </div>
     </div>

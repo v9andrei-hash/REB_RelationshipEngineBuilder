@@ -30,7 +30,7 @@ export class GeminiService {
     };
   }
 
-  async analyzeSimulation(history: Message[], stats: any, situations: any[], npcs: NPC[]): Promise<SimulationIntervention[]> {
+  async analyzeSimulation(history: Message[], stats: any, npcs: NPC[]): Promise<SimulationIntervention[]> {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = `
       CURRENT STATS: ${JSON.stringify(stats)}

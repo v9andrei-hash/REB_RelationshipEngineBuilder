@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { gemini } from './services/geminiService';
 import { Message, SystemLogEntry } from './types';
 import Sidebar from './components/Sidebar';
@@ -8,14 +8,14 @@ import Dashboard from './components/Dashboard';
 import SettingsPanel from './components/SettingsPanel';
 import { SimulationProvider } from './context/SimulationContext';
 import { useSimulation } from './hooks/useSimulation';
-import { selectDashboardStats, selectCruxReadiness, selectSituationSuggestion } from './state/selectors';
+import { selectDashboardStats, selectCruxReadiness } from './state/selectors';
 import { createInitialState } from './state/initial';
 import { routeOutput } from './services/outputRouter';
 import { checkSemanticDrift } from './services/semanticValidator';
 import { checkCoherence, formatCoherenceWarning } from './services/coherenceValidator';
 
 const AppContent: React.FC = () => {
-  const [view, setView] = useState<'chat' | 'settings' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations'>('settings');
+  const [view, setView] = useState<'chat' | 'settings' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs'>('settings');
   const [messages, setMessages] = useState<Message[]>([]);
   const [logEntries, setLogEntries] = useState<SystemLogEntry[]>([]);
   const [systemContext, setSystemContext] = useState<string>('');
@@ -37,6 +37,49 @@ const AppContent: React.FC = () => {
       message
     }]);
   }, []);
+
+  const loadGenreModule = async (genre: string): Promise<string> => {
+    const genreMap: Record<string, string> = {
+      'Romance': 'GENRE_ROMANCE_REFACTORED.md',
+      'Thriller': 'GENRE_THRILLER_REFACTORED.md',
+      'Action': 'GENRE_ACTION_REFACTORED.md',
+      'Sci-Fi': 'GENRE_SCIFI_REFACTORED.md',
+      'Horror': 'GENRE_HORROR_REFACTORED.md',
+      'Comedy': 'GENRE_COMEDY_REFACTORED.md'
+    };
+    
+    const filename = genreMap[genre];
+    if (!filename) {
+      addLog('warning', 'app', `Unknown genre: ${genre}`);
+      return '';
+    }
+    
+    try {
+      const response = await fetch(`/genres/${filename}`);
+      const content = await response.text();
+      addLog('info', 'app', `Genre module loaded: ${genre}`);
+      return content;
+    } catch (error) {
+      addLog('error', 'app', `Failed to load genre module: ${genre}`);
+      return '';
+    }
+  };
+
+  // Trigger genre load after wizard completion
+  useEffect(() => {
+    if (state.phase === 'narrative' && state.world.genre && systemContext) {
+      // Wizard just completed, reload system instruction with genre
+      const reloadWithGenre = async () => {
+        setIsCaching(true);
+        const genreContent = await loadGenreModule(state.world.genre);
+        const combined = systemContext + '\n\n' + genreContent;
+        await gemini.setSystemInstruction(combined);
+        setIsCaching(false);
+        addLog('info', 'app', `Genre-aware engine initialized: ${state.world.genre}`);
+      };
+      reloadWithGenre();
+    }
+  }, [state.phase, state.world.genre, systemContext]);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isProcessing) return;
@@ -253,7 +296,13 @@ const AppContent: React.FC = () => {
   };
 
   const handleTriggerCrux = () => handleSendMessage("(CRUX)");
-  const handleDrawSituation = () => handleSendMessage("(SITUATION)");
+  const handleToggleMechanics = (enabled: boolean) => {
+    dispatch({ 
+      type: 'UPDATE_MECHANICS', 
+      payload: { enabled } 
+    });
+    addLog('info', 'app', `Optional mechanics ${enabled ? 'enabled' : 'disabled'}`);
+  };
 
   const handleClearSession = () => {
     if (window.confirm("Initiate Hard Reset? All narrative memory and engine state will be purged.")) {
@@ -271,7 +320,6 @@ const AppContent: React.FC = () => {
 
   const dashboardStats = selectDashboardStats(state);
   const cruxReady = selectCruxReadiness(state);
-  const situationAdvisory = selectSituationSuggestion(state);
 
   return (
     <div className="flex h-screen w-full bg-[#0a0a0a] overflow-hidden text-sm relative">
@@ -286,11 +334,11 @@ const AppContent: React.FC = () => {
         violationCount={violationCount}
         anchorCount={state.anchors?.length || 0} 
         npcCount={Object.keys(state.npcs || {}).length} 
-        sitCount={state.situations?.length || 0}
         cruxReady={cruxReady}
-        situationAdvisory={situationAdvisory}
+        genre={state.world.genre}
+        optionalMechanics={state.optionalMechanics}
         onTriggerCrux={handleTriggerCrux}
-        onDrawSituation={handleDrawSituation}
+        onToggleMechanics={handleToggleMechanics}
         onExport={() => {}} 
         onImport={() => {}} 
         onClear={handleClearSession}
@@ -305,8 +353,19 @@ const AppContent: React.FC = () => {
               onPromptUpdate={async (c) => {
                 setIsCaching(true);
                 addLog('info', 'app', 'Caching new protocol set...');
-                await gemini.setSystemInstruction(c);
-                setSystemContext(c);
+                
+                let combinedInstruction = c; // REB_CORE_v4_3.md
+                
+                // If wizard completed and genre selected, append genre module
+                if (state.world.genre) {
+                  const genreContent = await loadGenreModule(state.world.genre);
+                  if (genreContent) {
+                    combinedInstruction += '\n\n' + genreContent;
+                  }
+                }
+                
+                await gemini.setSystemInstruction(combinedInstruction);
+                setSystemContext(c); // Store just CORE (genre loads dynamically)
                 setIsCaching(false);
                 addLog('info', 'app', 'Engine ready. System context initialized.');
                 setView('chat');
@@ -327,13 +386,12 @@ const AppContent: React.FC = () => {
           </div>
         )}
 
-        {(view === 'reb' || view === 'pc' || view === 'world' || view === 'npcs' || view === 'situations' || view === 'anchors') && (
+        {(view === 'reb' || view === 'pc' || view === 'world' || view === 'npcs' || view === 'anchors') && (
           <Dashboard 
             view={view} 
             stats={dashboardStats} 
             anchors={state.anchors || []} 
             npcs={Object.values(state.npcs || {})} 
-            situations={state.situations || []} 
             inventory={[]} 
             sceneHistory={[]} 
             pc={state.pc} 

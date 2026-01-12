@@ -53,9 +53,9 @@ export const createInitialState = (): SimulationState => ({
   inputTokens: 0,
   outputTokens: 0,
   npcs: {},
-  situations: [],
   anchors: [],
   pressures: [],
   cruxHistory: [],
-  pendingCruxPressure: false
+  pendingCruxPressure: false,
+  optionalMechanics: { enabled: false }
 });

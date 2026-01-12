@@ -24,16 +24,6 @@ export interface NPCState {
 
 export type NPC = NPCState;
 
-export interface SituationState {
-  id: string;
-  label: string;
-  status: 'IN_DECK' | 'TRIGGERED' | 'RESOLVED';
-  triggerCondition: string;
-  resolutionSummary?: string;
-}
-
-export type Situation = SituationState;
-
 export interface AnchorPoint {
   id: string;
   timestamp: number;
@@ -50,7 +40,40 @@ export interface PressureSource {
   source: string;
   active: boolean;
 }
-
+export interface OptionalMechanics {
+  enabled: boolean;
+  
+  thriller?: {
+    intelAsymmetry?: { pc: number; reb: number };
+    coverIntegrity?: number; // 0-100
+    dualTrust?: { operational: number; personal: number }; // 0-100 each
+  };
+  
+  action?: {
+    combatSync?: number; // 0-100
+    momentum?: 'NONE' | 'BUILDING' | 'HIGH' | 'PEAK';
+    injuries?: { pc: number; reb: number }; // severity 0-100
+    roles?: { pc: string; reb: string }; // e.g., "Point", "Cover"
+  };
+  
+  scifi?: {
+    timeDilation?: { pc: number; reb: number }; // subjective age
+    identityContinuity?: { pc: string; reb: string }; // "Original", "Clone_6mo"
+    mortalityAsymmetry?: { pc: string; reb: string }; // "Mortal", "Immortal"
+  };
+  
+  horror?: {
+    corruption?: { pc: number; reb: number }; // 0-100%
+    sanity?: { pc: number; reb: number }; // 0-100%
+    trustVsParanoia?: number; // -100 (paranoid) to +100 (trusting)
+  };
+  
+  comedy?: {
+    awkwardnessLevel?: number; // 0-100
+    setupCallbacks?: string[]; // Pending callback identifiers
+    chemistryFlow?: number; // 0-100
+  };
+}
 export interface SceneSnapshot {
   id: string;
   timestamp: number;
@@ -62,7 +85,6 @@ export interface Chronicle {
   id: string;
   title: string;
   anchors: AnchorPoint[];
-  situations: SituationState[];
   timestamp: number;
 }
 
@@ -125,11 +147,11 @@ export interface SimulationState {
 
   // Narrative Tracking
   npcs: Record<string, NPCState>;
-  situations: SituationState[];
   anchors: AnchorPoint[];
   pressures: PressureSource[];
 
   // Internal Engine Metadata
   cruxHistory: ('WANT' | 'NEED')[];
   pendingCruxPressure: boolean;
+  optionalMechanics?: OptionalMechanics;
 }

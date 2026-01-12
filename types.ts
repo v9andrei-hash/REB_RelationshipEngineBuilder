@@ -44,7 +44,7 @@ export interface PortraitRequest {
 
 export interface SimulationIntervention {
   id: string;
-  type: 'Physics' | 'Narrative' | 'Situation' | 'Telemetry';
+  type: 'Physics' | 'Narrative' | 'Telemetry';
   severity: 'Low' | 'Medium' | 'High' | 'CRITICAL';
   description: string;
   proposedFix: string;

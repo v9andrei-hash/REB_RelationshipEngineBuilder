@@ -47,15 +47,6 @@ export const selectCruxReadiness = (state: SimulationState): boolean => {
   );
 };
 
-export const selectSituationSuggestion = (state: SimulationState): string => {
-  const adr = Math.abs(state.bondMatrix.adrenaline);
-  const oxy = Math.abs(state.bondMatrix.oxytocin);
-  
-  if (adr > oxy + 50) return "Somatic/Psychic Pressure Optimal";
-  if (oxy > adr + 50) return "Social/Proximity Pressure Optimal";
-  return "Environmental Pressure Recommended";
-};
-
 export interface DashboardStats {
   adr: number;
   oxy: number;

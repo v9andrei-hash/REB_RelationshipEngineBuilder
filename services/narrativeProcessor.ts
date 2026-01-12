@@ -89,21 +89,7 @@ export function processLLMResponse(
     }
   });
 
-  // 4. Process SITUATION
-  const situationMatch = responseText.match(/<!-- SITUATION\|(.*?)\|(.*?) -->/i);
-  if (situationMatch) {
-    dispatch({
-      type: 'SITUATION_DRAWN',
-      situation: {
-        id: `sit-${Date.now()}`,
-        label: situationMatch[1].trim(),
-        triggerCondition: situationMatch[2].trim(),
-        status: 'TRIGGERED'
-      }
-    });
-  }
-
-  // 5. Process PRESSURE
+  // 4. Process PRESSURE
   const pressureMatch = responseText.match(/<!-- PRESSURE\|(.*?)\|(.*?) -->/i);
   if (pressureMatch) {
     dispatch({
@@ -113,7 +99,7 @@ export function processLLMResponse(
     });
   }
 
-  // 6. Process CRUX Moments
+  // 5. Process CRUX Moments
   const cruxMatch = responseText.match(/<!-- CRUX\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/i);
   if (cruxMatch) {
     const [_, tierRaw, desc, want, need] = cruxMatch;
@@ -129,7 +115,7 @@ export function processLLMResponse(
     });
   }
 
-  // 7. Process Configuration Shifts
+  // 6. Process Configuration Shifts
   const configMatch = responseText.match(/<!-- CONFIG\|(.*?)\|(.*?)\|(.*?)\|(.*?)\|(.*?) -->/i);
   if (configMatch) {
     const [_, configType, pcWant, pcNeed, rebWant, rebNeed] = configMatch;
@@ -152,7 +138,7 @@ export function processLLMResponse(
     }
   }
 
-  // 8. Process NPC Updates
+  // 7. Process NPC Updates
   const npcMatches = Array.from(responseText.matchAll(/<!-- NPC\|(.*?):(.*?)\|(.*?) -->/gi));
   npcMatches.forEach(m => {
     dispatch({

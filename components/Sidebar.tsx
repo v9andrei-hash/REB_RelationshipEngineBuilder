@@ -1,28 +1,29 @@
 
 import React, { useRef } from 'react';
-import { Layout, MessageSquare, Settings as SettingsIcon, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Layers, Loader2, Clock, Map, Film, Flame, Layers as SituationIcon } from 'lucide-react';
+import { Layout, MessageSquare, Settings as SettingsIcon, BarChart3, ShieldAlert, Zap, Target, History, Radio, Cpu, Download, Upload, Trash2, Users, Loader2, Clock, Map, Film, Flame } from 'lucide-react';
+import OptionalMechanicsPanel from './OptionalMechanicsPanel';
 
 interface SidebarProps {
-  currentView: 'chat' | 'context' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'situations' | 'meta';
+  currentView: 'chat' | 'context' | 'reb' | 'pc' | 'world' | 'anchors' | 'npcs' | 'meta';
   setView: (view: any) => void;
   stats: any;
   violationCount?: number;
   anchorCount: number;
   npcCount: number;
-  sitCount: number;
   isExporting?: boolean;
   cruxReady?: boolean;
-  situationAdvisory?: string;
+  genre?: string;
+  optionalMechanics?: any;
   onTriggerCrux: () => void;
-  onDrawSituation: () => void;
+  onToggleMechanics?: (enabled: boolean) => void;
   onExport: () => void;
   onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClear: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  currentView, setView, stats, violationCount = 0, anchorCount, npcCount, sitCount, isExporting, 
-  cruxReady, situationAdvisory, onTriggerCrux, onDrawSituation, onExport, onImport, onClear 
+  currentView, setView, stats, violationCount = 0, anchorCount, npcCount, isExporting, 
+  cruxReady, genre, optionalMechanics, onTriggerCrux, onToggleMechanics, onExport, onImport, onClear 
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,7 +72,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             <NavItem id="reb" icon={Radio} label="REB Surveillance" />
             <NavItem id="pc" icon={Target} label="PC Psychology" />
             <NavItem id="npcs" icon={Users} label="NPC Roster" badge={npcCount} />
-            <NavItem id="situations" icon={Layers} label="Situation Deck" badge={sitCount} />
             <NavItem id="anchors" icon={History} label="Narrative Anchors" badge={anchorCount} />
           </nav>
         </div>
@@ -94,22 +94,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </button>
 
-            <button 
-              onClick={onDrawSituation}
-              className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg transition-all duration-300 group border border-transparent text-gray-500 hover:bg-cyan-600/10 hover:border-cyan-500/30 hover:text-cyan-400"
-            >
-              <SituationIcon size={18} className="text-gray-600 group-hover:text-cyan-500" />
-              <span className="font-black text-[10px] uppercase tracking-wider">Draw Situation</span>
-            </button>
-
-            {situationAdvisory && (
-              <div className="px-4 py-1.5 bg-blue-500/5 rounded border border-blue-500/10 mt-1">
-                <span className="text-[8px] text-blue-400/60 font-black uppercase tracking-widest flex items-center gap-1">
-                  <Zap size={8} /> Advisory:
-                </span>
-                <span className="text-[9px] text-blue-300/80 font-bold uppercase italic leading-none">{situationAdvisory}</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -196,6 +180,15 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
         </div>
+
+        {genre && genre !== 'Romance' && (
+          <OptionalMechanicsPanel
+            genre={genre}
+            enabled={optionalMechanics?.enabled || false}
+            mechanics={optionalMechanics}
+            onToggle={(enabled) => onToggleMechanics?.(enabled)}
+          />
+        )}
 
         <div className="flex items-center gap-2 p-2 px-4 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[9px] font-black uppercase tracking-tighter">
           <ShieldAlert size={12} />
