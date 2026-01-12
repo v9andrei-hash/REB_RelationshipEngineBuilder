@@ -39,6 +39,8 @@ const AppContent: React.FC = () => {
   }, []);
 
   const loadGenreModule = async (genre: string): Promise<string> => {
+    addLog('info', 'app', `Attempting to load genre: ${genre}`);
+    
     const genreMap: Record<string, string> = {
       'Romance': 'GENRE_ROMANCE_REFACTORED.md',
       'Thriller': 'GENRE_THRILLER_REFACTORED.md',
@@ -54,13 +56,21 @@ const AppContent: React.FC = () => {
       return '';
     }
     
+    addLog('info', 'app', `Fetching: /genres/${filename}`);
+    
     try {
       const response = await fetch(`/genres/${filename}`);
+      
+      if (!response.ok) {
+        addLog('error', 'app', `HTTP ${response.status}: ${response.statusText}`);
+        return '';
+      }
+      
       const content = await response.text();
-      addLog('info', 'app', `Genre module loaded: ${genre}`);
+      addLog('info', 'app', `Genre module loaded: ${genre} (${content.length} chars)`);
       return content;
     } catch (error) {
-      addLog('error', 'app', `Failed to load genre module: ${genre}`);
+      addLog('error', 'app', `Failed to load genre module: ${genre} - ${error}`);
       return '';
     }
   };
@@ -286,6 +296,32 @@ const AppContent: React.FC = () => {
           }
         }];
       });
+
+      // Parse genre from LLM's visible response after wizard completes
+      if (state.phase === 'wizard' && fullResponse.includes('GENRE_MODULE:')) {
+        // Parse genre from LLM's visible claim
+        const genreMatch = fullResponse.match(/GENRE_MODULE:\s*(\w+)\s*\[LOADED\]/i);
+        if (genreMatch) {
+          const genre = genreMatch[1]; // e.g., "HORROR"
+          const genreMap: Record<string, string> = {
+            'HORROR': 'Horror',
+            'ROMANCE': 'Romance',
+            'THRILLER': 'Thriller',
+            'ACTION': 'Action',
+            'SCIFI': 'Sci-Fi',
+            'SCI-FI': 'Sci-Fi',
+            'COMEDY': 'Comedy'
+          };
+          const normalizedGenre = genreMap[genre.toUpperCase()];
+          if (normalizedGenre) {
+            dispatch({
+              type: 'WORLD_SET',
+              payload: { genre: normalizedGenre }
+            });
+            addLog('info', 'app', `Genre set from LLM response: ${normalizedGenre}`);
+          }
+        }
+      }
       
     } catch (error: any) {
       addLog('error', 'app', `Engine error: ${error.message || 'Connection severed.'}`);
