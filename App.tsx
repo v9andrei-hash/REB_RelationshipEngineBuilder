@@ -94,6 +94,58 @@ const AppContent: React.FC = () => {
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isProcessing) return;
     
+    // ===== DEBUG LOGGING BLOCK START =====
+    addLog('info', 'app', `━━━━━ NEW MESSAGE ━━━━━`);
+    addLog('info', 'app', `User input: "${text}"`);
+    addLog('info', 'app', `state.phase: ${state.phase}`);
+    addLog('info', 'app', `state.wizardStep: ${state.wizardStep}`);
+    addLog('info', 'app', `state.world.genre: ${state.world.genre}`);
+    
+    // Try to parse genre from user input
+    if (state.phase === 'wizard') {
+      addLog('info', 'app', `✓ In wizard phase`);
+      
+      if (state.wizardStep === 2) {
+        addLog('info', 'app', `✓ On wizard step 2`);
+        
+        const genreMatch = text.match(/[AB],\s*(\d+)/i);
+        addLog('info', 'app', `Genre regex match: ${genreMatch ? 'YES' : 'NO'}`);
+        
+        if (genreMatch) {
+          const genreNum = parseInt(genreMatch[1]);
+          addLog('info', 'app', `Extracted genre number: ${genreNum}`);
+          
+          const genreMap: Record<number, string> = {
+            1: 'Romance',
+            2: 'Action',
+            3: 'Thriller',
+            4: 'Sci-Fi',
+            5: 'Horror',
+            6: 'Comedy'
+          };
+          
+          const selectedGenre = genreMap[genreNum];
+          addLog('info', 'app', `Mapped to genre: ${selectedGenre || 'NOT FOUND'}`);
+          
+          if (selectedGenre) {
+            addLog('info', 'app', `🎯 DISPATCHING WORLD_SET with genre: ${selectedGenre}`);
+            dispatch({
+              type: 'WORLD_SET',
+              payload: { genre: selectedGenre }
+            });
+            addLog('info', 'app', `✅ Genre set from user input: ${selectedGenre}`);
+          }
+        } else {
+          addLog('warning', 'app', `Genre regex did not match input: "${text}"`);
+        }
+      } else {
+        addLog('info', 'app', `Not on step 2, current step: ${state.wizardStep}`);
+      }
+    } else {
+      addLog('info', 'app', `Not in wizard phase, current phase: ${state.phase}`);
+    }
+    // ===== DEBUG LOGGING BLOCK END =====
+    
     // STEP 3: INJECT corrections into user input for the LLM
     let finalInputText = text;
     if (pendingCorrectionsRef.current.length > 0) {
@@ -296,32 +348,6 @@ const AppContent: React.FC = () => {
           }
         }];
       });
-
-      // Parse genre from LLM's visible response after wizard completes
-      if (state.phase === 'wizard' && fullResponse.includes('GENRE_MODULE:')) {
-        // Parse genre from LLM's visible claim
-        const genreMatch = fullResponse.match(/GENRE_MODULE:\s*(\w+)\s*\[LOADED\]/i);
-        if (genreMatch) {
-          const genre = genreMatch[1]; // e.g., "HORROR"
-          const genreMap: Record<string, string> = {
-            'HORROR': 'Horror',
-            'ROMANCE': 'Romance',
-            'THRILLER': 'Thriller',
-            'ACTION': 'Action',
-            'SCIFI': 'Sci-Fi',
-            'SCI-FI': 'Sci-Fi',
-            'COMEDY': 'Comedy'
-          };
-          const normalizedGenre = genreMap[genre.toUpperCase()];
-          if (normalizedGenre) {
-            dispatch({
-              type: 'WORLD_SET',
-              payload: { genre: normalizedGenre }
-            });
-            addLog('info', 'app', `Genre set from LLM response: ${normalizedGenre}`);
-          }
-        }
-      }
       
     } catch (error: any) {
       addLog('error', 'app', `Engine error: ${error.message || 'Connection severed.'}`);
